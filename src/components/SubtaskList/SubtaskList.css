@@ -1,0 +1,98 @@
+.subtask-block {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #22336b;
+  padding: 4px 8px;
+  margin-top: 8px;
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+}
+
+.subtask-block input[type="checkbox"] {
+  margin-right: 10px;
+}
+
+.subtask-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.subtask-name-deadline-edit {
+  display: flex;
+  width: 100%;
+  max-width: 350px;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subtask-name-deadline {
+  display: flex;
+  width: 325px;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  max-height: 150px;
+}
+
+.subtask-name {
+  text-align: left;
+  /* Allow wrapping onto multiple lines: */
+  white-space: normal;               /* instead of “nowrap” */
+  word-break: break-word;            /* break long words if necessary */
+  overflow-wrap: anywhere;           /* (optional) allow break at any point */
+  font-size: 0.8rem;
+  max-width: 300px;                  /* you can keep or adjust this, it just limits width */
+  /* remove overflow: hidden; so it won’t cut off but expand down */
+}
+
+.subtask-deadline {
+  margin-left: auto;
+  text-align: right;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: rgb(179, 173, 173);
+  min-height: 4px;
+}
+
+.subtask-name-edit {
+  font-size: 0.8rem;
+  background: transparent;
+  border: none;
+  color: white;
+  outline: none;
+  padding: 2px;
+  width: 250px;
+}
+
+.subtask-date-edit {
+  margin-left: auto;
+  width: 30px;
+  font-size: 0.6rem;
+  padding: 4px;
+  background: transparent;
+  border: 1px solid #888;
+  border-radius: 4px;
+  color: white;
+}
+
+.done-subtask {
+  text-decoration: line-through;
+  color: gray;
+}
+
+/* Subtask delete button next to date input */
+.subtask-delete-btn {
+  background: none;
+  border: none;
+  color: #e57373;
+  font-size: 0.6rem;
+  margin-left: 0px;
+  cursor: pointer;
+  width: 4px;
+  font-weight: bold;
+}
