@@ -7,15 +7,13 @@ import SignIn from "./components/SignIn.jsx";
 import ProjectTabs from "./components/ProjectTabs/ProjectTabs";
 import TaskList from "./components/TaskList/TaskList";
 import useUserProjects from "./hooks/useUserProjects";
-// import useBackend from "./hooks/useBackend";
 
 import "./App.css";
 
 function App() {
   const { currentUser, logOut } = useAuthContext();
-  // const data = useBackend();
 
-  // when ur not logged in
+  // when you're not logged in
   if (!currentUser) {
     return (
       <div className="auth-container">
@@ -41,14 +39,10 @@ function App() {
     currentProject,
     setCurrentProject,
     addProject,
-
-    // ─── Project-level actions ───
     deleteProject,
     moveProjectUp,
     moveProjectDown,
     renameProject,
-
-    // ─── Task-level actions ───
     addTask,
     deleteTask,
     checkTask,
@@ -57,7 +51,6 @@ function App() {
     checkSubtask,
     deleteSubtask,
     editSubtask,
-
     loading,
   } = useUserProjects();
 
@@ -74,7 +67,7 @@ function App() {
     <div className="app-wrapper">
       {/* ─── HEADER SPANS FULL VIEWPORT ─── */}
       <header className="app-header">
-        <div className="header-spacer" /> 
+        <div className="header-spacer" />
         <div className="user-info">
           Logged in as <strong>{currentUser.email}</strong>
           <button className="logout-button" onClick={logOut}>
