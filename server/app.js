@@ -1,19 +1,19 @@
 const express = require('express');
 const app = express();
 
-// const db = require('./firebase');
-// console.log('Firestore connected');
-
-// Middleware to parse JSON
+// Middleware
 app.use(express.json());
+
+// Route mounting
+app.use('/projects', require('./routes/projects'));
+app.use('/projects', require('./routes/lists'));
+app.use('/projects', require('./routes/tasks'));
+app.use('/projects', require('./routes/subtasks'));
 
 // Test route
 app.get('/', (req, res) => {
   res.send('Hello from Express');
 });
-
-const projectRoutes = require('./routes/projects.js')
-app.use('/projects', projectRoutes);
 
 // Start server
 app.listen(3001, () => {
