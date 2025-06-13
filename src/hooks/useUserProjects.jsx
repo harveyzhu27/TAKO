@@ -1,391 +1,171 @@
-// src/hooks/useUserProjects.js
-
 import { useState, useEffect, useCallback } from "react";
-import { doc, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import { useAuthContext } from "./useAuth";
-import { db } from "../firebase";
-
-/**
- * useUserProjects
- *
- * Custom hook to manage a user’s projects/tasks in Firestore.
- * Stores all data in a single document at `users/{uid}`:
- *   {
- *     projects: {
- *       Personal: [ { name, due, done, completedAt?, subtasks: [ { name, done } ] }, … ],
- *       Work: [ … ],
- *       …
- *     },
- *     currentProject: "Personal"
- *   }
- *
- * Returns:
- *   - projects: an object mapping projectName → array of task objects
- *   - currentProject: string
- *   - setCurrentProject(projectName)
- *   - addProject(projectName)
- *   - deleteProject(projectName)
- *   - addTask(taskObject)
- *   - deleteTask(taskName)
- *   - checkTask(taskName)
- *   - editTask(taskName, updatedFields)
- *   - addSubtask(taskName, subtaskObject)
- *   - checkSubtask(taskName, subtaskName)
- *   - deleteSubtask(taskName, subtaskName)
- *   - editSubtask(taskName, subtaskName, updatedFields)
- *   - loading: boolean (true while initial Firestore snapshot is loading)
- */
+import {
+  getAllProjects,
+  getProject,
+  createProject as apiCreateProject,
+  deleteProject as apiDeleteProject,
+  updateProject,
+} from "../api/projects";
+import {
+  getAllLists,
+  createList as apiCreateList,
+  deleteList as apiDeleteList,
+  editList as apiEditList,
+} from "../api/lists";
+import {
+  getAllTasks,
+  createTask as apiCreateTask,
+  deleteTask as apiDeleteTask,
+  editTask as apiEditTask,
+  checkTask as apiCheckTask,
+} from "../api/tasks";
+import {
+  getAllSubtasks,
+  createSubtask as apiCreateSubtask,
+  deleteSubtask as apiDeleteSubtask,
+  editSubtask as apiEditSubtask,
+  checkSubtask as apiCheckSubtask,
+} from "../api/subtasks";
 
 export default function useUserProjects() {
   const { currentUser } = useAuthContext();
-  const [userData, setUserData] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [currentProject, setCurrentProject] = useState<string | null>(null);
+  const [lists, setLists] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [subtasks, setSubtasks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Subscribe to Firestore document for this user
   useEffect(() => {
-    if (!currentUser) {
-      setUserData(null);
-      setLoading(false);
-      return;
-    }
-
+    if (!currentUser) return;
     setLoading(true);
-    const userDocRef = doc(db, "users", currentUser.uid);
-
-    // Listener
-    const unsubscribe = onSnapshot(
-      userDocRef, (snapshot) => {
-        if (snapshot.exists()) {
-          setUserData(snapshot.data());
-          setLoading(false);
-        } else {
-          // If no document yet, create with default structure
-          const initialData = {
-            projects: {
-              Home: {
-                tasks: [],
-                createdAt: Date.now()
-              }
-            },
-            currentProject: "Home",
-          };
-          setDoc(userDocRef, initialData)
-            .then(() => {
-              setUserData(initialData);
-              setLoading(false);
-            })
-            .catch((error) => {
-              console.error("Error initializing user data:", error);
-              setLoading(false);
-            });
+    getAllProjects()
+      .then((projects) => {
+        setProjects(projects);
+        const firstProjectId = projects[0]?.id || null;
+        setCurrentProject(firstProjectId);
+        if (firstProjectId) {
+          loadLists(firstProjectId);
         }
-      },
-      (error) => {
-        console.error("Error fetching user document:", error);
-        setLoading(false);
-      }
-    );
-
-    return () => unsubscribe();
+      })
+      .finally(() => setLoading(false));
   }, [currentUser]);
 
-  // Helper to update user document
-  const writeUserData = useCallback(
-    async (newFields) => {
-      if (!currentUser) return;
-      const userDocRef = doc(db, "users", currentUser.uid);
-      try {
-        await updateDoc(userDocRef, newFields);
-      } catch (error) {
-        console.error("Error updating user data:", error);
+  const loadLists = useCallback(async (projectId: string) => {
+    const lists = await getAllLists(projectId);
+    setLists(lists);
+    if (lists.length > 0) {
+      loadTasks(projectId, lists[0].id);
+    }
+  }, []);
+
+  const loadTasks = useCallback(async (projectId: string, listId: string) => {
+    const tasks = await getAllTasks(projectId, listId);
+    setTasks(tasks);
+    if (tasks.length > 0) {
+      loadSubtasks(projectId, listId, tasks[0].id);
+    }
+  }, []);
+
+  const loadSubtasks = useCallback(async (projectId: string, listId: string, taskId: string) => {
+    const subtasks = await getAllSubtasks(projectId, listId, taskId);
+    setSubtasks(subtasks);
+  }, []);
+
+  const addProject = useCallback(async (name: string) => {
+    const newProject = await apiCreateProject(name);
+    setProjects((prev) => [...prev, newProject]);
+    setCurrentProject(newProject.id);
+    loadLists(newProject.id);
+  }, [loadLists]);
+
+  const deleteProject = useCallback(async (id: string) => {
+    await apiDeleteProject(id);
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setCurrentProject((prev) => {
+      if (prev === id) {
+        return projects.length > 0 ? projects[0].id : null;
       }
-    },
-    [currentUser]
-  );
+      return prev;
+    });
+  }, [projects]);
 
-  // Add a new project
-  const addProject = useCallback(
-    async (projectName) => {
-      if (!userData) return false;
-      const trimmed = projectName.trim();
-      if (trimmed === "" || userData.projects.hasOwnProperty(trimmed)) return false;
+  const addList = useCallback(async (projectId: string, name: string) => {
+    const newList = await apiCreateList(projectId, name);
+    setLists((prev) => [...prev, newList]);
+  }, []);
 
-      const updatedProjects = {
-        ...userData.projects,
-        [trimmed]: {
-          tasks: [], 
-          createdAt: Date.now()},
-      };
-      // id
-      // order id
-      // tasks
+  const removeList = useCallback(async (projectId: string, listId: string) => {
+    await apiDeleteList(projectId, listId);
+    setLists((prev) => prev.filter((l) => l.id !== listId));
+  }, []);
 
-      await writeUserData({
-        projects: updatedProjects,
-        currentProject: trimmed,
-      });
-      return true;
-    },
-    [userData, writeUserData]
-  );
+  const updateList = useCallback(async (projectId: string, listId: string, updates) => {
+    const updated = await apiEditList(projectId, listId, updates);
+    setLists((prev) => prev.map((l) => (l.id === listId ? updated : l)));
+  }, []);
 
-  // Delete an existing project
-  const deleteProject = useCallback(
-    async (projectName) => {
-      if (!userData) return;
-      if (!userData.projects.hasOwnProperty(projectName)) return;
+  const addTask = useCallback(async (projectId: string, listId: string, task) => {
+    const newTask = await apiCreateTask(projectId, listId, task);
+    setTasks((prev) => [...prev, newTask]);
+  }, []);
 
-      let allProjects = { ...userData.projects };
-      delete allProjects[projectName];
+  const removeTask = useCallback(async (projectId: string, listId: string, taskId: string) => {
+    await apiDeleteTask(projectId, listId, taskId);
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  }, []);
 
-      let newCurrent = userData.currentProject;
-      if (userData.currentProject === projectName) {
-        const remainingKeys = Object.keys(allProjects);
-        if (remainingKeys.length > 0) {
-          newCurrent = remainingKeys[0];
-        } else {
-          newCurrent = "Home";
-          allProjects = { Home: { tasks: [], createdAt: Date.now() } };
-        }
-      }
+  const updateTask = useCallback(async (projectId: string, listId: string, taskId: string, updates) => {
+    const updated = await apiEditTask(projectId, listId, taskId, updates);
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+  }, []);
 
-      await writeUserData({
-        projects: allProjects,
-        currentProject: newCurrent,
-      });
-    },
-    [userData, writeUserData]
-  );
+  const toggleTask = useCallback(async (projectId: string, listId: string, taskId: string) => {
+    const updated = await apiCheckTask(projectId, listId, taskId);
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+  }, []);
 
-  // Change the selected project
-  const setCurrentProject = useCallback(
-    async (projectName) => {
-      if (!userData) return;
-      if (!userData.projects.hasOwnProperty(projectName)) return;
-      await writeUserData({ currentProject: projectName });
-    },
-    [userData, writeUserData]
-  );
+  const addSubtask = useCallback(async (projectId: string, listId: string, taskId: string, subtask) => {
+    const newSubtask = await apiCreateSubtask(projectId, listId, taskId, subtask);
+    setSubtasks((prev) => [...prev, newSubtask]);
+  }, []);
 
-  // Add a new task to the current project
-  const addTask = useCallback(
-    async (taskObj) => {
-      if (!userData) return;
-      const cp = userData.currentProject;
-      if (!cp) return;
+  const removeSubtask = useCallback(async (projectId: string, listId: string, taskId: string, subtaskId: string) => {
+    await apiDeleteSubtask(projectId, listId, taskId, subtaskId);
+    setSubtasks((prev) => prev.filter((s) => s.id !== subtaskId));
+  }, []);
 
-const existingTasks = userData.projects[cp]?.tasks || [];      
-const updatedTasks = [...existingTasks, taskObj];
+  const updateSubtask = useCallback(async (projectId: string, listId: string, taskId: string, subtaskId: string, updates) => {
+    const updated = await apiEditSubtask(projectId, listId, taskId, subtaskId, updates);
+    setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? updated : s)));
+  }, []);
 
-      const updatedProjects = {
-        ...userData.projects,
-        [cp]: updatedTasks,
-      };
-      await writeUserData({ projects: updatedProjects });
-    },
-    [userData, writeUserData]
-  );
-
-  // Delete a task by name
-  const deleteTask = useCallback(
-    async (taskName) => {
-      if (!userData) return;
-      const cp = userData.currentProject;
-      if (!cp) return;
-      const existingTasks = userData.projects[cp] || [];
-      const filtered = existingTasks.filter((t) => t.name !== taskName);
-
-      const updatedProjects = {
-        ...userData.projects,
-        [cp]: filtered,
-      };
-      await writeUserData({ projects: updatedProjects });
-    },
-    [userData, writeUserData]
-  );
-
-  // Toggle done/undone for a task
-  const checkTask = useCallback(
-    async (taskName) => {
-      if (!userData) return;
-      const cp = userData.currentProject;
-      if (!cp) return;
-      const existingTasks = userData.projects[cp] || [];
-
-      const updatedTasks = existingTasks.map((t) => {
-        if (t.name === taskName) {
-          const now = new Date().toISOString();
-          if (!t.done) {
-            return { ...t, done: true, completedAt: now };
-          } else {
-            const { completedAt, ...rest } = t;
-            return { ...rest, done: false };
-          }
-        }
-        return t;
-      });
-
-      const updatedProjects = {
-        ...userData.projects,
-        [cp]: updatedTasks,
-      };
-      await writeUserData({ projects: updatedProjects });
-    },
-    [userData, writeUserData]
-  );
-
-  // Edit a task’s fields
-  const editTask = useCallback(
-    async (taskName, updatedFields) => {
-      if (!userData) return;
-      const cp = userData.currentProject;
-      if (!cp) return;
-      const existingTasks = userData.projects[cp] || [];
-
-      const updatedTasks = existingTasks.map((t) =>
-        t.name === taskName ? { ...t, ...updatedFields } : t
-      );
-
-      const updatedProjects = {
-        ...userData.projects,
-        [cp]: updatedTasks,
-      };
-      await writeUserData({ projects: updatedProjects });
-    },
-    [userData, writeUserData]
-  );
-
-  // Add a subtask to a task
-  const addSubtask = useCallback(
-    async (taskName, subtaskObj) => {
-      if (!userData) return;
-      const cp = userData.currentProject;
-      if (!cp) return;
-      const existingTasks = userData.projects[cp] || [];
-
-      const updatedTasks = existingTasks.map((t) => {
-        if (t.name === taskName) {
-          const existingSubs = t.subtasks || [];
-          if (
-            existingSubs.some(
-              (s) =>
-                s.name.trim().toLowerCase() ===
-                subtaskObj.name.trim().toLowerCase()
-            )
-          ) {
-            return t;
-          }
-          return { ...t, subtasks: [...existingSubs, subtaskObj] };
-        }
-        return t;
-      });
-
-      const updatedProjects = {
-        ...userData.projects,
-        [cp]: updatedTasks,
-      };
-      await writeUserData({ projects: updatedProjects });
-    },
-    [userData, writeUserData]
-  );
-
-  // Toggle done/undone for a subtask
-  const checkSubtask = useCallback(
-    async (taskName, subtaskName) => {
-      if (!userData) return;
-      const cp = userData.currentProject;
-      if (!cp) return;
-      const existingTasks = userData.projects[cp] || [];
-
-      const updatedTasks = existingTasks.map((t) => {
-        if (t.name === taskName) {
-          const existingSubs = t.subtasks || [];
-          const newSubs = existingSubs.map((s) =>
-            s.name === subtaskName ? { ...s, done: !s.done } : s
-          );
-          return { ...t, subtasks: newSubs };
-        }
-        return t;
-      });
-
-      const updatedProjects = {
-        ...userData.projects,
-        [cp]: updatedTasks,
-      };
-      await writeUserData({ projects: updatedProjects });
-    },
-    [userData, writeUserData]
-  );
-
-  // Delete a subtask
-  const deleteSubtask = useCallback(
-    async (taskName, subtaskName) => {
-      if (!userData) return;
-      const cp = userData.currentProject;
-      if (!cp) return;
-      const existingTasks = userData.projects[cp] || [];
-
-      const updatedTasks = existingTasks.map((t) => {
-        if (t.name === taskName) {
-          const filteredSubs = (t.subtasks || []).filter(
-            (s) => s.name !== subtaskName
-          );
-          return { ...t, subtasks: filteredSubs };
-        }
-        return t;
-      });
-
-      const updatedProjects = {
-        ...userData.projects,
-        [cp]: updatedTasks,
-      };
-      await writeUserData({ projects: updatedProjects });
-    },
-    [userData, writeUserData]
-  );
-
-  // Edit a subtask’s fields
-  const editSubtask = useCallback(
-    async (taskName, subtaskName, updates) => {
-      if (!userData) return;
-      const cp = userData.currentProject;
-      if (!cp) return;
-      const existingTasks = userData.projects[cp] || [];
-
-      const updatedTasks = existingTasks.map((t) => {
-        if (t.name === taskName) {
-          const existingSubs = t.subtasks || [];
-          const newSubs = existingSubs.map((s) =>
-            s.name === subtaskName ? { ...s, ...updates } : s
-          );
-          return { ...t, subtasks: newSubs };
-        }
-        return t;
-      });
-
-      const updatedProjects = {
-        ...userData.projects,
-        [cp]: updatedTasks,
-      };
-      await writeUserData({ projects: updatedProjects });
-    },
-    [userData, writeUserData]
-  );
+  const toggleSubtask = useCallback(async (projectId: string, listId: string, taskId: string, subtaskId: string) => {
+    const updated = await apiCheckSubtask(projectId, listId, taskId, subtaskId);
+    setSubtasks((prev) => prev.map((s) => (s.id === subtaskId ? updated : s)));
+  }, []);
 
   return {
-    projects: userData?.projects || {},
-    currentProject: userData?.currentProject || "Personal",
+    projects,
+    currentProject,
     setCurrentProject,
     addProject,
     deleteProject,
+    lists,
+    addList,
+    removeList,
+    updateList,
+    tasks,
     addTask,
-    deleteTask,
-    checkTask,
-    editTask,
+    removeTask,
+    updateTask,
+    toggleTask,
+    subtasks,
     addSubtask,
-    checkSubtask,
-    deleteSubtask,
-    editSubtask,
+    removeSubtask,
+    updateSubtask,
+    toggleSubtask,
     loading,
   };
 }

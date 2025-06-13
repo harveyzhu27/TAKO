@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import './TaskList.css';
 import SubtaskList from "../SubtaskList/SubtaskList";
 
-export interface Task {
+type Task = {
     id: string,
     name: string, 
     projectId: string,
@@ -10,12 +10,17 @@ export interface Task {
     listId: string,
     createdAt: number,
     completedAt?: number,
-    repeat?: "daily" | "weekly" | null;
-    repeatOn?: string,
-    priority?: "high" | "medium" | "low"
-    tags?: string[];
+    tags?: string[],
     order?: number,
-    subtasks: 
+    subtasks: {
+        id: string,
+        name: string,
+        dueDate: number,
+        createdAt: number,
+        completedAt: number,
+        taskId: string,
+        order?: string
+    }
 }
 
 const [tasks, setTasks] = useState<Record<string,Task>>({});
