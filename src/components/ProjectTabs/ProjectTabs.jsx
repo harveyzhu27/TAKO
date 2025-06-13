@@ -10,8 +10,9 @@ function ProjectTabs({
 }) {
   const [newProjectName, setProjectName] = useState("");
   const [showAddOptions, setShowAddOptions] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Force “Home” to be first; sort the rest by createdAt
+  // Force Home to be first; sort the rest by createdAt
   const homeKey = "Home";
   const allKeys = Object.keys(projects);
   const otherKeys = allKeys
@@ -32,6 +33,7 @@ function ProjectTabs({
           onClick={() => {
             setCurrentProject(projectName);
             setShowAddOptions(false);
+            setErrorMessage("");
           }}
         >
           {projectName}
@@ -39,32 +41,45 @@ function ProjectTabs({
       ))}
 
       {showAddOptions ? (
-        <input
-          className="project-name-input"
-          value={newProjectName}
-          placeholder="New project…"
-          onChange={(e) => {
-            setProjectName(e.target.value);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && newProjectName.trim() !== "") {
-              addProject(newProjectName.trim());
-              setProjectName("");
-              setShowAddOptions(false);
-            }
-            if (e.key === "Escape") {
-              setProjectName("");
-              setShowAddOptions(false);
-            }
-          }}
-          autoFocus
-        />
+        <div className="project-add-input-wrapper">
+          <input
+            className="project-name-input"
+            value={newProjectName}
+            placeholder="New project…"
+            onChange={(e) => {
+              setProjectName(e.target.value);
+              setErrorMessage(""); // clear error on change
+            }}
+            onKeyDown={async (e) => {
+              if (e.key === "Enter" && newProjectName.trim() !== "") {
+                const success = await addProject(newProjectName.trim());
+                if (!success) {
+                  setErrorMessage("Project name already exists");
+                  return;
+                }
+                setProjectName("");
+                setShowAddOptions(false);
+                setErrorMessage("");
+              }
+              if (e.key === "Escape") {
+                setProjectName("");
+                setShowAddOptions(false);
+                setErrorMessage("");
+              }
+            }}
+            autoFocus
+          />
+          {errorMessage && (
+            <div className="error-message">{errorMessage}</div>
+          )}
+        </div>
       ) : (
         <button
           className="add-button-off"
           onClick={() => {
             setShowAddOptions(true);
             setCurrentProject(null);
+            setErrorMessage("");
           }}
         >
           Add

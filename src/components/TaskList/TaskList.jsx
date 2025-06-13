@@ -49,7 +49,7 @@ function TaskList({
   // collapsedTasks = { "Task A": true, "Task B": false, ... }
 
   // ─── Derived Data ───
-  const tasks = projects[currentProject];
+const tasks = (projects[currentProject]?.tasks) || [];
 
   // Helper: sort tasks by done‐status, due date, creation index
   function sortTasks(arr) {

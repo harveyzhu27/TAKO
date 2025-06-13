@@ -67,3 +67,10 @@ gap = gap between each child
 .project-name-input::placeholder {
     color: #ccc;
 }
+
+
+.error-message {
+  color: red;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}

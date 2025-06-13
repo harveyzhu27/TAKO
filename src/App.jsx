@@ -7,10 +7,13 @@ import SignIn from "./components/SignIn.jsx";
 import ProjectTabs from "./components/ProjectTabs/ProjectTabs";
 import TaskList from "./components/TaskList/TaskList";
 import useUserProjects from "./hooks/useUserProjects";
+// import useBackend from "./hooks/useBackend";
+
 import "./App.css";
 
 function App() {
   const { currentUser, logOut } = useAuthContext();
+  // const data = useBackend();
 
   // when ur not logged in
   if (!currentUser) {

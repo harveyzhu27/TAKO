@@ -1,7 +1,9 @@
 const express = require('express');
 const { randomUUID } = require('crypto');
+const serverless = require('serverless-http');
 const router = express.Router();
-const { db } = require('./firebase');
+const { db } = require('../firebase');
+const authenticate = require('../authMiddleware');
 
 const USE_SIMPLE_IDS = true;
 let simpleProjId = 1, simpleListId = 1, simpleTaskId = 1, simpleSubtaskId = 1;
@@ -22,6 +24,7 @@ function validateName(name) {
 // PROJECT ROUTES
 router.post('/create', async (req, res) => {
   try {
+    const uid = req.user.uid;
     const name = validateName(req.body.name);
     if (!name) return res.status(400).json({ error: 'Project name is required and must be non-numeric string' });
     const existing = await db.collection('projects').where('name', '==', name).get();
@@ -39,6 +42,7 @@ router.post('/create', async (req, res) => {
       const listRef = projectRef.collection('lists').doc(listId);
       batch.set(listRef, {
         id: listId,
+        uid,
         name: listName,
         projectId: projId,
         isUniversal: listName === 'Do Now',
@@ -54,9 +58,10 @@ router.post('/create', async (req, res) => {
   }
 });
 
-router.get('/all', async (req, res) => {
+router.get('/all', authenticate, async (req, res) => {
   try {
-    const snapshot = await db.collection('projects').get();
+    const uid = req.user.uid;
+    const snapshot = await db.collection('projects').where('uid','==', uid).get();
     const projects = snapshot.docs.map(d => d.data());
     return res.status(200).json({ projects });
   } catch (err) {

@@ -62,7 +62,10 @@ export default function useUserProjects() {
           // If no document yet, create with default structure
           const initialData = {
             projects: {
-              Home: [],
+              Home: {
+                tasks: [],
+                createdAt: Date.now()
+              }
             },
             currentProject: "Home",
           };
@@ -103,19 +106,25 @@ export default function useUserProjects() {
   // Add a new project
   const addProject = useCallback(
     async (projectName) => {
-      if (!userData) return;
+      if (!userData) return false;
       const trimmed = projectName.trim();
-      if (trimmed === "" || userData.projects.hasOwnProperty(trimmed)) return;
+      if (trimmed === "" || userData.projects.hasOwnProperty(trimmed)) return false;
 
       const updatedProjects = {
         ...userData.projects,
-        [trimmed]: [],
+        [trimmed]: {
+          tasks: [], 
+          createdAt: Date.now()},
       };
+      // id
+      // order id
+      // tasks
 
       await writeUserData({
         projects: updatedProjects,
         currentProject: trimmed,
       });
+      return true;
     },
     [userData, writeUserData]
   );
@@ -136,7 +145,7 @@ export default function useUserProjects() {
           newCurrent = remainingKeys[0];
         } else {
           newCurrent = "Home";
-          allProjects = { Home: [] };
+          allProjects = { Home: { tasks: [], createdAt: Date.now() } };
         }
       }
 
@@ -165,8 +174,8 @@ export default function useUserProjects() {
       const cp = userData.currentProject;
       if (!cp) return;
 
-      const existingTasks = userData.projects[cp] || [];
-      const updatedTasks = [...existingTasks, taskObj];
+const existingTasks = userData.projects[cp]?.tasks || [];      
+const updatedTasks = [...existingTasks, taskObj];
 
       const updatedProjects = {
         ...userData.projects,
