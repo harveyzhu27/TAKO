@@ -1,14 +1,13 @@
-const express = require('express');
-const cors = require('cors');
+import express from 'express';
+import cors from 'cors';
 
-const projectsRouter = require('./routes/projects');
-const listsRouter = require('./routes/lists');
-const tasksRouter = require('./routes/tasks');
-const subtasksRouter = require('./routes/subtasks');
+import projectsRouter from './routes/projects';
+import listsRouter from './routes/lists';
+import tasksRouter from './routes/tasks';
+import subtasksRouter from './routes/subtasks';
 
 const app = express();
 
-// ✅ CORS config
 app.use(cors({
   origin: ['http://localhost:5173', 'https://your-vercel-app.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -16,10 +15,7 @@ app.use(cors({
   credentials: true
 }));
 
-// ✅ Preflight handler
-app.options('*', cors());
 
-// ✅ Request logger
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.path}`);
   next();
@@ -27,13 +23,11 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// ✅ Mount routes
 app.use('/projects', projectsRouter);
 app.use('/lists', listsRouter);
 app.use('/tasks', tasksRouter);
 app.use('/subtasks', subtasksRouter);
 
-// ✅ Health check route
 app.get('/', (req, res) => {
   res.send('Backend is running!');
 });

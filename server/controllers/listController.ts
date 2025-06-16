@@ -5,6 +5,7 @@ import { createList } from '../models/ListModel';
 
 let currentListOrder = 0;
 
+
 export const createListController = async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user.uid;

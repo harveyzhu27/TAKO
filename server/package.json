@@ -1,11 +1,11 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "main": "app.js",
+  "main": "server/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node app.js",
-    "dev": "nodemon app.js"
+    "start": "ts-node server/index.ts",
+    "dev": "nodemon --watch server -e ts server/index.ts"
   },
   "keywords": [],
   "author": "",
@@ -16,5 +16,8 @@
     "firebase-admin": "^13.4.0",
     "nodemon": "^3.1.10"
   },
-  "description": ""
+  "description": "",
+  "devDependencies": {
+    "@types/cors": "^2.8.19"
+  }
 }
