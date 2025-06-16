@@ -10,7 +10,7 @@ import authenticate from '../authMiddleware';
 
 const router = express.Router();
 
-router.post('/create', authenticate, createProjectController);
+router.post('/', authenticate, createProjectController);
 router.get('/all', authenticate, getAllProjectsController);
 router.get('/:id', authenticate, getProjectByIdController);
 router.put('/:id', authenticate, updateProjectController);
