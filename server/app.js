@@ -5,10 +5,10 @@ const app = express();
 app.use(express.json());
 
 // Route mounting
-app.use('/projects', require('./routes/projects'));
-app.use('/projects', require('./routes/lists'));
-app.use('/projects', require('./routes/tasks'));
-app.use('/projects', require('./routes/subtasks'));
+app.use('/projects', require('./prev/projects'));
+app.use('/projects', require('./prev/lists'));
+app.use('/projects', require('./prev/tasks'));
+app.use('/projects', require('./prev/subtasks'));
 
 // Test route
 app.get('/', (req, res) => {
