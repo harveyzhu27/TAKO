@@ -11,10 +11,10 @@ app.use(cors({
   credentials: true
 }));
 
-// ✅ Handle preflight OPTIONS requests manually (some proxies need this)
+// ✅ Handle preflight OPTIONS requests manually
 app.options('*', cors());
 
-// ✅ Add logging to verify preflights reach server
+// ✅ Log every request
 app.use((req, res, next) => {
   console.log(`[${req.method}] ${req.path}`);
   next();
@@ -22,9 +22,16 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-// ✅ Mount your routes
-app.use('/projects', require('./prev/projects'));
-// ... other routes
+// ✅ Mount your actual routes
+app.use('/projects', require('./routes/projects'));
+app.use('/lists', require('./routes/lists'));
+app.use('/tasks', require('./routes/tasks'));
+app.use('/subtasks', require('./routes/subtasks'));
+
+// ✅ Optional root check route
+app.get('/', (req, res) => {
+  res.send('Backend is running!');
+});
 
 app.listen(3001, () => {
   console.log('Server listening on port 3001');
