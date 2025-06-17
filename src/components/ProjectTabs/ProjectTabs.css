@@ -1,76 +1,62 @@
-.active-tab {
-    background-color: #e34ce3;
-    color: white;
-    font-weight: bold;
-    border-radius: 5px;
-    width: 120px;
+* {}
+
+:root {
+    --input-border: #3c3c3c;
+    --background-color: #121212;
+    --text-color: #ffffff;
 }
+
+.show-add-options-block {}
+
+.add-project-box {
+    height: 50px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 1em;
+    background-color: #3c3c3c;
+    width: 130px;
+    padding-left: 8px;
+    padding-right: 8px
+}
+
 
 .basic-tab {
-    background-color: #3f1e3f;
-    color: white;
-    font-weight: bold;
-    border-radius: 5px;
-    width: 120px;
+    height: 50px;
+    background-color: #3c3c3c;
 }
 
-/* 
-position: absolute = I can control where the tabs go 
-display: flex = children can be more dynamically arranged
-flex-direction: column = children arranged in a column
-align-items: flex-start = force every child to hug the container's left edge
-gap = gap between each child
+.basic-tab:hover,
+.add-button-off:hover,
+.home-tab:hover {
+    background-color: var(--input-border);
+}
 
-*/
+.active-tab {
+    height: 50px;
+    background-color: rgb(111, 195, 223)
+}
+
 .project-tabs-container {
-    position: absolute;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    top: 0;
-    left: 0;
-    padding: 30px;   
+    height: 80%;
+    margin: 10px;
+    gap: 10px;
 }
 
-.add-button-on {
-    background-color: #06d77c;
-    margin-right: 8px; 
-    width: 120px;
+.active-home-tab {
+    background-color: rgb(115, 115, 241);
+    height: 50px;
+
 }
 
-.add-button-off {
-    background-color: #12955c;
-    width: 120px;
+.home-tab {
+    background-color: gray;
+    height: 50px;
 }
-
-.line {
-    background-color : #ffffff;
-    width: 120px;
-}
-
-/* Inline “new project” input should look like a tab button */
-.project-name-input {
-    padding: 8px 12px;           /* match the basic-tab padding */
-    background-color: #3f1e3f;   /* same as .basic-tab */
-    color: white;
-    border: none;
-    border-radius: 5px;          /* same corner radius */
-    font-size: 1rem;
-    width: 120px;                /* same width as other tabs */
-    outline: none;
-    /* prevent the flex container from shrinking this below its content */
-    flex-shrink: 0;
-}
-
-/* Placeholder text should be subtle */
-.project-name-input::placeholder {
-    color: #ccc;
-}
-
 
 .error-message {
-  color: red;
-  font-size: 0.9rem;
-  margin-top: 4px;
+    justify-content: center;
+    color: red;
 }

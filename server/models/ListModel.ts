@@ -1,3 +1,5 @@
+import { Task } from "./TaskModel";
+
 export interface List {
   id: string;
   uid: string;
@@ -6,6 +8,7 @@ export interface List {
   isUniversal: boolean;
   order: number;
   taskCount: number;
+  tasks: Task[]
 }
 
 export function createList({
@@ -17,7 +20,7 @@ export function createList({
   order,
 }: {
   id: string;
-  uid: string;
+  uid:string;
   name: string;
   projectId: string;
   isUniversal: boolean;
@@ -31,5 +34,6 @@ export function createList({
     isUniversal,
     order,
     taskCount: 0,
+    tasks: [],
   };
 }

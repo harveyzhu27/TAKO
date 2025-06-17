@@ -37,7 +37,8 @@ export default function SignIn() {
         onChange={(e) => setPassword(e.target.value)}
         required
       />
-      <button type="submit">Sign In</button>
+      <button type="submit"
+      >Log In</button>
     </form>
   );
 }

@@ -1,3 +1,5 @@
+import { Subtask } from "./SubtaskModel";
+
 export interface Task {
   id: string;
   uid: string;
@@ -10,6 +12,7 @@ export interface Task {
   tags: string[];
   order: number;
   subtaskCount: number;
+  subtasks: Subtask[];
 }
 
 export function createTask({
@@ -45,5 +48,6 @@ export function createTask({
     tags: isUniversal ? ['DoNow'] : tags,
     order,
     subtaskCount: 0,
+    subtasks: []
   };
 }

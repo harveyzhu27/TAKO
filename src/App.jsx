@@ -13,7 +13,7 @@ import "./App.css";
 function App() {
   const { currentUser, logOut } = useAuthContext();
 
-  // when you're not logged in
+  // TODO have autocomplete attribtues
   if (!currentUser) {
     return (
       <div className="auth-container">
@@ -87,8 +87,14 @@ function App() {
         </aside>
 
         <div className="main-section">
-          <main className="task-panel">
-            <div className="task-list-container">
+          <main className="main-panel">
+            <div className="list-container">
+              {projects[currentProject]?.lists?.map(list => (
+                <List
+                  key = {list.id}
+                  list = {list}
+                  addTask = {(taskName) => addTask(currentProject, list.id, taskName)}></List>
+              ))}
               <TaskList
                 projects={projects}
                 currentProject={currentProject}

@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { getAuth } from 'firebase/auth';
 import { useAuthContext } from "./useAuth";
 import {
   getAllProjects,
@@ -39,33 +38,25 @@ export default function useUserProjects() {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [loading, setLoading] = useState(true);
 
-
-  useEffect(() => {
-  const auth = getAuth();
-  const user = auth.currentUser;
-
-  if (user) {
-    user.getIdToken().then((token) => {
-      console.log("🔥 Firebase token:", token);
-    });
-  } else {
-    console.log("⚠️ No user signed in");
-  }
-}, []);
-
   // Load all projects on auth change
   useEffect(() => {
-    if (!currentUser) return;
-    setLoading(true);
-    getAllProjects()
-      .then((projs) => {
-        setProjects(projs);
-        const firstId = projs[0]?.id || null;
-        setCurrentProject(firstId);
-        if (firstId) loadLists(firstId);
-      })
-      .finally(() => setLoading(false));
-  }, [currentUser]);
+  if (!currentUser) {
+    setProjects([]);
+    setCurrentProject(null);
+    setLoading(false);
+    return;
+  }
+
+  setLoading(true);
+  getAllProjects()
+    .then((projs) => {
+      setProjects(projs);
+      const firstId = projs[0]?.id || null;
+      setCurrentProject(firstId);
+      if (firstId) loadLists(firstId);
+    })
+    .finally(() => setLoading(false));
+}, [currentUser]);
 
   // Load lists for a project
   const loadLists = useCallback(async (projectId: string) => {

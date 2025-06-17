@@ -1,4 +1,3 @@
-// src/components/TaskList/TaskList.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import './TaskList.css';
 import SubtaskList from "../SubtaskList/SubtaskList";
