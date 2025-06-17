@@ -89,11 +89,13 @@ function App() {
         <div className="main-section">
           <main className="main-panel">
             <div className="list-container">
+              
               {projects[currentProject]?.lists?.map(list => (
                 <List
                   key = {list.id}
                   list = {list}
                   addTask = {(taskName) => addTask(currentProject, list.id, taskName)}></List>
+                
               ))}
               <TaskList
                 projects={projects}

@@ -1,0 +1,15 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",                      // this is relative to /src
+    "paths": {
+      "@shared/*": ["../shared/*"]       // go up one level to reach shared/
+    },
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "target": "ESNext",
+    "moduleResolution": "Node"
+  },
+  "include": [".", "src", "src/types"],
+  "exclude": ["../node_modules"]
+}

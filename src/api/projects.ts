@@ -1,16 +1,8 @@
 import { getAuth } from "firebase/auth";
+import type { Project } from "@shared/models/ProjectModel";
 
 // Base URL for your backend API
 const API_URL = import.meta.env.VITE_API_URL;
-
-export type Project = {
-  id: string;
-  name: string;
-  description: string;
-  order: number;
-  taskCount: number;
-  lists: string[];
-};
 
 // Retrieve the current user's Firebase ID token
 export async function getIdToken(): Promise<string> {

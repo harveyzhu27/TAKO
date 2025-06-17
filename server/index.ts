@@ -6,7 +6,6 @@ import subtasksRouter from './routes/subtasks';
 
 const app = express();
 
-// CORS echo-back for credentialed requests
 app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
   if (origin) {

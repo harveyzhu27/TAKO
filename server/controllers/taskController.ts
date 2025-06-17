@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../firebase';
 import { getNewTaskId, validateName } from '../utils/utils';
-import { createTask } from '../models/TaskModel';
+import { createTask } from '@shared/models/TaskModel';
 
 let currentTaskOrder = 0;
 

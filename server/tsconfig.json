@@ -1,6 +1,6 @@
 {
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    // language and module settings
     "target": "ES2020",
     "module": "CommonJS",
     "moduleResolution": "Node",
@@ -8,14 +8,10 @@
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,
-
-    // output directory (relative to server/)
     "outDir": "dist",
-
-    // treat server/ as the root of your TS source
-    "rootDir": ".",
+    "rootDir": "../",
     "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["**/*"],     // compile all .ts under server/
+  "include": ["**/*"],
   "exclude": ["node_modules"]
 }

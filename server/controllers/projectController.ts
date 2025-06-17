@@ -1,9 +1,9 @@
 import { Request, Response } from 'express'
 import { db } from '../firebase'
 import { getNewProjId, getNewListId, validateName } from '../utils/utils'
-import { createProject } from '../models/ProjectModel'
-import { createList } from '../models/ListModel'
 import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-admin/firestore'
+import { createProject } from "@shared/models/ProjectModel";
+import { createList } from "@shared/models/ListModel"
 
 let currentProjOrder = 0
 let currentListOrder = 0

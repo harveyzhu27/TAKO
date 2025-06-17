@@ -1,32 +1,32 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuthContext } from "./useAuth";
+import type { Project } from "@shared/models/ProjectModel";
+import type { List } from "@shared/models/ListModel";
+import type { Task } from "@shared/models/TaskModel";
+import type { Subtask } from "@shared/models/SubtaskModel";
 import {
   getAllProjects,
   createProject as apiCreateProject,
   deleteProject as apiDeleteProject,
   updateProject as apiUpdateProject,
-  Project,
 } from "../api/projects";
 import {
   getLists as getAllLists,
   createList as apiCreateList,
   deleteList as apiDeleteList,
-  updateList as apiUpdateList,
-  List,
+  updateList as apiUpdateList
 } from "../api/lists";
 import {
   getTasks as getAllTasks,
   createTask as apiCreateTask,
   deleteTask as apiDeleteTask,
-  updateTask as apiUpdateTask,
-  Task,
+  updateTask as apiUpdateTask
 } from "../api/tasks";
 import {
   getSubtasks as getAllSubtasks,
   createSubtask as apiCreateSubtask,
   deleteSubtask as apiDeleteSubtask,
-  updateSubtask as apiUpdateSubtask,
-  Subtask,
+  updateSubtask as apiUpdateSubtask
 } from "../api/subtasks";
 
 export default function useUserProjects() {
@@ -49,19 +49,31 @@ export default function useUserProjects() {
 
   setLoading(true);
   getAllProjects()
-    .then((projs) => {
-      setProjects(projs);
-      const firstId = projs[0]?.id || null;
-      setCurrentProject(firstId);
-      if (firstId) loadLists(firstId);
-    })
-    .finally(() => setLoading(false));
+    .then(async (projs) => {
+      const projsWithLists = await Promise.all(
+        projs.map(async (proj) => {
+        const lists = await getAllLists(proj.id);
+        return { ...proj, lists };
+        })
+      );
+      const firstId = projsWithLists[0]?.id || null;
+    setCurrentProject(firstId);
+    if (firstId) loadTasks(firstId, projsWithLists[0].lists[0].id);
+  })
+  .finally(() => setLoading(false));
 }, [currentUser]);
 
   // Load lists for a project
   const loadLists = useCallback(async (projectId: string) => {
     const ls = await getAllLists(projectId);
     setLists(ls);
+    setProjects(prev =>
+    prev.map(p =>
+      p.id === projectId
+        ? { ...p, lists: ls }
+        : p
+    )
+  );
     if (ls.length > 0) loadTasks(projectId, ls[0].id);
   }, []);
 
@@ -82,16 +94,17 @@ export default function useUserProjects() {
   );
 
   // Create a new project
-  const addProject = useCallback(
-    async (name: string) => {
-      const newProject = await apiCreateProject(name);
-      setProjects((prev) => [...prev, newProject]);
-      setCurrentProject(newProject.id);
-      loadLists(newProject.id);
-    },
-    [loadLists]
-  );
-
+const addProject = useCallback(
+  async (name: string) => {
+    const newProject = await apiCreateProject(name);
+    const lists = await getAllLists(newProject.id);
+    const fullProject = { ...newProject, lists };
+    setProjects((prev) => [...prev, fullProject]);
+    setCurrentProject(newProject.id);
+    if (lists.length > 0) loadTasks(newProject.id, lists[0].id);
+  },
+  [loadTasks]
+);
   // Delete a project
   const deleteProject = useCallback(
     async (id: string) => {

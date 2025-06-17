@@ -1,17 +1,10 @@
 // src/api/lists.ts
 import { getAuth } from "firebase/auth";
 
+import type { List } from "@shared/models/ListModel";
+
 // Base URL for your backend API
 const API_URL = import.meta.env.VITE_API_URL;
-
-export type List = {
-  id: string;
-  projectId: string;
-  name: string;
-  isUniversal: boolean;
-  order: number;
-  taskCount: number;
-};
 
 export async function getIdToken(): Promise<string> {
   const user = getAuth().currentUser;

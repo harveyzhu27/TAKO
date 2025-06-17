@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../firebase';
 import { getNewSubtaskId, validateName } from '../utils/utils';
-import { createSubtask } from '../models/SubtaskModel';
+import { createSubtask } from '@shared/models/SubtaskModel';
 
 let currentSubtaskOrder = 0;
 

@@ -1,17 +1,10 @@
 // src/api/subtasks.ts
 import { getAuth } from "firebase/auth";
 
+import type { Subtask } from "@shared/models/SubtaskModel";
+
 const API_URL = import.meta.env.VITE_API_URL;
 
-export type Subtask = {
-  id: string;
-  taskId: string;
-  name: string;
-  dueDate: number | null;
-  createdAt: number;
-  completedAt: number | null;
-  order: number;
-};
 
 export async function getIdToken(): Promise<string> {
   const user = getAuth().currentUser;

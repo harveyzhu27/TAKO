@@ -1,20 +1,9 @@
 // src/api/tasks.ts
 import { getAuth } from "firebase/auth";
 
-const API_URL = import.meta.env.VITE_API_URL;
+import type { Task } from "@shared/models/TaskModel";
 
-export type Task = {
-  id: string;
-  projectId: string;
-  listId: string;
-  name: string;
-  dueDate: number | null;
-  createdAt: number;
-  completedAt: number | null;
-  tags: string[];
-  order: number;
-  subtaskCount: number;
-};
+const API_URL = import.meta.env.VITE_API_URL;
 
 export async function getIdToken(): Promise<string> {
   const user = getAuth().currentUser;

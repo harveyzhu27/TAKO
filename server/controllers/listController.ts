@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { db } from '../firebase';
 import { getNewListId, validateName } from '../utils/utils';
-import { createList } from '../models/ListModel';
+import { createList } from "@shared/models/ListModel"
 
 let currentListOrder = 0;
 
