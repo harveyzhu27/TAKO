@@ -26,9 +26,9 @@ app.use(express.json());
 
 // Routes
 app.use('/projects', projectsRouter);
-app.use('/lists', listsRouter);
-app.use('/tasks', tasksRouter);
-app.use('/subtasks', subtasksRouter);
+app.use('/projects', listsRouter);
+app.use('/projects', tasksRouter);
+app.use('/projects', subtasksRouter);
 
 // Health check
 app.get('/', (req, res) => {
