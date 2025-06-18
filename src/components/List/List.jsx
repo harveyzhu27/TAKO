@@ -1,8 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './List.css';
-import SubtaskList from "../SubtaskList/SubtaskList";
-
-import TaskList from './TaskList/TaskList';
 
 function List ({
     list, addTask, addList, editList, deleteList
@@ -13,9 +10,11 @@ function List ({
 
     return (
         <div className = 'list-container'>
-            <h1 className = 'list-header'>{list.name}</h1>
+            <div className = 'list-header'>{list.name}</div>
             <div className = 'task-list'>
                 {list.tasks.map((task) => {
+                    
+                    {console.log(task)}
                     return(
                         <div className = 'task-block' key={task.id} >
                             <span>
@@ -59,8 +58,10 @@ function List ({
                          <button 
                             autoFocus
                             className = "task-block"
-                            onClick={() => 
+                            onClick={() => {
+                                console.log(list.tasks)
                                 setShowAddTaskOption(true)
+                            }
                             }>Add task</button>
                     )
                 }

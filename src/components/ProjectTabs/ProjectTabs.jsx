@@ -10,7 +10,7 @@ function ProjectTabs({
     const [showAddOptions, setShowAddOption] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [showHomeScreen, setShowHomeScreen] = useState(false);
-    const sortedProjects = Object.values(projects).sort((a, b) => a.order - b.order)
+    const sortedProjects = [...projects].sort((a,b)=>a.order - b.order);
 
     return (
         <div className="project-tabs-container">

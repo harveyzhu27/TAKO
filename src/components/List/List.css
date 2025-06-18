@@ -1,9 +1,22 @@
 .list-container {
-
+    display: flex;
+    flex-direction: column;
+    column-count: 2;
+    justify-content: flex-start;
+    height: 100%;
 }
 
 
 .list-header {
+    background-color: orange;
+    margin-top: 8px;
+    align-self: center;
+    max-width: fit-content;
+    padding-left: 8px;
+    padding-right: 8px;
+    font-size: 32px;
+    font-weight: bold;
+    border-radius: 5px;
     
 }
 
@@ -11,6 +24,25 @@
     
 }
 
-.add-task-button {
-    
+.add-task-block {
+    background-color: orange;
+}
+
+.task-block {
+  /* display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  background-color: #22336b;
+  padding: 8px 12px;
+  margin-top: 6px;
+  border-radius: 8px;
+  color: white;
+  font-size: 1rem;
+  position: relative;
+  padding-right: 40px;  */
+}
+.task-list{ 
+    margin: 10px;
+    background-color: lightblue;
+    height: 100%;
 }

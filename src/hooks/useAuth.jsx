@@ -1,4 +1,4 @@
-// src/hooks/useAuth.js
+// src/hooks/useAuth.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { auth } from "../firebase";                      // ← your auth export
 import {

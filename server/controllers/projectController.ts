@@ -10,27 +10,28 @@ let currentListOrder = 0
 
 export const createProjectController = async (req: Request, res: Response) => {
   try {
-    const uid = req.user!.uid
-    const name = validateName(req.body.name)
-    if (!name) return res.status(400).json({ error: 'Invalid project name' })
+    const uid = (req as any).user.uid;
+
+    const name = validateName(req.body.name);
+    if (!name) return res.status(400).json({ error: 'Invalid project name' });
 
     const existing = await db
       .collection('projects')
       .where('uid', '==', uid)
       .where('name', '==', name)
-      .get()
-    if (!existing.empty) return res.status(400).json({ error: 'Duplicate project name' })
+      .get();
+    if (!existing.empty) return res.status(400).json({ error: 'Duplicate project name' });
 
-    const projId = getNewProjId()
-    const projectRef = db.collection('projects').doc(projId)
-    const project = createProject({ id: projId, uid, name, order: currentProjOrder++ })
-    await projectRef.set(project)
+    const projId = getNewProjId();
+    const project = createProject({ id: projId, uid, name, order: currentProjOrder++ });
+    const projectRef = db.collection('projects').doc(projId);
 
-    const defaultLists = ['Do Now', 'Unnamed']
-    const batch: WriteBatch = db.batch()
+    // Single batch for everything
+    const batch = db.batch();
+    batch.set(projectRef, project);
 
-    for (const listName of defaultLists) {
-      const listId = getNewListId()
+    for (const listName of ['Do Now', 'Unnamed']) {
+      const listId = getNewListId();
       const list = createList({
         id: listId,
         uid,
@@ -38,17 +39,17 @@ export const createProjectController = async (req: Request, res: Response) => {
         projectId: projId,
         isUniversal: listName === 'Do Now',
         order: currentListOrder++,
-      })
-      batch.set(projectRef.collection('lists').doc(listId), list)
+      });
+      batch.set(projectRef.collection('lists').doc(listId), list);
     }
 
-    await batch.commit()
-    res.status(201).json({ project })
+    await batch.commit();
+    res.status(201).json({ project });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Server error' })
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
   }
-}
+};
 
 export const getAllProjectsController = async (req: Request, res: Response) => {
   try {
@@ -143,7 +144,7 @@ export const deleteProjectController = async (req: Request, res: Response) => {
     const project = docSnap.data()!
     if (project.uid !== uid) return res.status(403).json({ error: 'Forbidden' })
 
-    const batch: WriteBatch = db.batch()
+    const batch = db.batch()
     const listsSnap = await projectRef.collection('lists').get()
     listsSnap.docs.forEach((ld: QueryDocumentSnapshot<DocumentData>) =>
       batch.delete(ld.ref)

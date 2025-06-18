@@ -1,19 +1,19 @@
 // src/App.jsx
 import React from "react";
-import { useAuthContext } from "./hooks/useAuth";
+import { useAuthContext } from "./hooks/useAuth.jsx";
 import SignUp from "./components/SignUp.jsx";
 import SignIn from "./components/SignIn.jsx";
 
-import ProjectTabs from "./components/ProjectTabs/ProjectTabs";
-import TaskList from "./components/TaskList/TaskList";
-import useUserProjects from "./hooks/useUserProjects";
+import ProjectTabs from "./components/ProjectTabs/ProjectTabs.jsx";
+import TaskList from "./components/TaskList/TaskList.jsx";
+import useUserProjects from "./hooks/useUserProjects.jsx";
+import List from "./components/List/List.jsx";
 
 import "./App.css";
 
-function App() {
+export default function App() {
   const { currentUser, logOut } = useAuthContext();
 
-  // TODO have autocomplete attribtues
   if (!currentUser) {
     return (
       <div className="auth-container">
@@ -33,7 +33,6 @@ function App() {
     );
   }
 
-  // ——— AUTHENTICATED: use Firestore-backed hooks ———
   const {
     projects,
     currentProject,
@@ -51,10 +50,10 @@ function App() {
     checkSubtask,
     deleteSubtask,
     editSubtask,
+    lists,
     loading,
   } = useUserProjects();
 
-  // Show loading indicator while data is being fetched
   if (loading) {
     return (
       <div style={{ color: "white", textAlign: "center", marginTop: "2rem" }}>
@@ -65,7 +64,6 @@ function App() {
 
   return (
     <div className="app-wrapper">
-      {/* ─── HEADER SPANS FULL VIEWPORT ─── */}
       <header className="app-header">
         <div className="header-spacer" />
         <div className="user-info">
@@ -88,14 +86,17 @@ function App() {
 
         <div className="main-section">
           <main className="main-panel">
-            <div className="list-container">
-              
-              {projects[currentProject]?.lists?.map(list => (
+            <div className="list-task-container">
+              {lists.map((list) => (
+                <div key = {list.id} className = "list-wrapper">
                 <List
-                  key = {list.id}
-                  list = {list}
-                  addTask = {(taskName) => addTask(currentProject, list.id, taskName)}></List>
-                
+                  list={list}
+                  addTask={(taskName) =>
+                    addTask(currentProject, list.id, taskName)
+                  }
+  
+                />
+                </div>
               ))}
               <TaskList
                 projects={projects}
@@ -120,5 +121,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
