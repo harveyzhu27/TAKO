@@ -1,5 +1,5 @@
 import { List } from "./ListModel";
-import { getNewListId } from "../utils/utils";
+import { getNewListId } from "../../server/utils/utils";
 
 export interface Project {
   id: string;
@@ -25,8 +25,8 @@ export function createProject({
   const list1: List = {
     id: getNewListId(),
     uid,
-    name: "Do Now",
     projectId: id,
+    name: "Do Now",
     isUniversal: true,
     order: 0,
     taskCount: 0,
