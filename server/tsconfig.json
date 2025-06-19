@@ -12,6 +12,13 @@
     "rootDir": "../",
     "typeRoots": ["./types", "./node_modules/@types"]
   },
-  "include": ["**/*"],
-  "exclude": ["node_modules"]
+  "include": [
+    "./**/*.ts",                           // ✅ include only server TS
+    "../shared/**/*.ts"                   // ✅ and shared types
+  ],
+  "exclude": [
+    "../client",                          // ✅ don't compile frontend code
+    "../node_modules",
+    "dist"
+  ]
 }
