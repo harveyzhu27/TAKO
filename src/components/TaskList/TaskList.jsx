@@ -16,7 +16,7 @@ function TaskList({
   return (tasks ?? []).map(task => (
     <div className="task-block" key={task.id}>
       <div className="task-bar">
-        {task.name}
+        {task.name}{task.id}
         <input
           type="checkbox"
           checked = {!!task.completedAt}

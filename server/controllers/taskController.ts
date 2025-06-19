@@ -8,7 +8,8 @@ let currentTaskOrder = 0;
 
 // Create a new task under a list
 export const createTaskController = async (req: Request, res: Response) => {
-  console.log('📥 createTask req.body =', req.body);
+  // console.log('📥 createTask req.body =', req.body);
+  // console.log("🧾 UID from req.user.uid =", (req as any).user?.uid);
   try {
     const uid = (req as any).user.uid;
     const { projectid, listid } = req.params;
@@ -20,16 +21,16 @@ export const createTaskController = async (req: Request, res: Response) => {
 
     const listRef = projectRef.collection('lists').doc(listid);
     const listSnap = await listRef.get();
-    if (!listSnap.exists) 
+    if (!listSnap.exists)
       return res.status(404).json({ error: 'List not found' });
 
     const name = validateName(req.body.name);
-    if (!name) 
+    if (!name)
       return res.status(400).json({ error: 'Invalid task name' });
 
     // Unique in the list
     const dupSnap = await listRef.collection('tasks').where('name', '==', name).get();
-    if (!dupSnap.empty) 
+    if (!dupSnap.empty)
       return res.status(400).json({ error: 'Duplicate task name' });
 
     const taskId = getNewTaskId();
@@ -100,15 +101,20 @@ export const getTaskController = async (req: Request, res: Response) => {
 export const updateTaskController = async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user.uid;
+    console.log("📌 UID =", uid);
     const { projectid, listid, taskid } = req.params;
-
+  console.log("📌 Params =", { projectid, listid, taskid });
     const taskRef = db
       .collection('projects').doc(projectid)
       .collection('lists').doc(listid)
       .collection('tasks').doc(taskid);
     const taskSnap = await taskRef.get();
-    if (!taskSnap.exists || taskSnap.data()?.uid !== uid)
+     console.log("📌 Task exists?", taskSnap.exists);
+    if (!taskSnap.exists || taskSnap.data()?.uid !== uid){
+      console.log("❌ Task not found or forbidden");
+      
       return res.status(404).json({ error: 'Task not found or forbidden' });
+    }
 
     const updates: any = {};
     if (req.body.name !== undefined) {
@@ -118,12 +124,16 @@ export const updateTaskController = async (req: Request, res: Response) => {
     }
     if (req.body.dueDate !== undefined) updates.dueDate = req.body.dueDate;
     if (req.body.order !== undefined) updates.order = req.body.order;
+    if (req.body.completedAt !== undefined) updates.completedAt = req.body.completedAt;
+    if (req.body.tags !== undefined) updates.tags = req.body.tags;
+
+  console.log("🔥 Updates to apply:", updates);
 
     await taskRef.update(updates);
     const updated = await taskRef.get();
     res.status(200).json({ task: updated.data()! });
   } catch (err) {
-    console.error(err);
+    console.error("🔥 ERROR in updateTaskController:", err);
     res.status(500).json({ error: 'Server error' });
   }
 };

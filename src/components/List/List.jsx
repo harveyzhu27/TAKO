@@ -44,7 +44,7 @@ function List({
                                 onChange={(e) => setTaskName(e.target.value)}
                                 onKeyDown={async (e) => {
                                     if (e.key === 'Enter') {
-                                        const success = await addTask(newTaskName.trim())
+                                        const success = await addTask(projectId, list.id, newTaskName.trim())
                                         if (!success) {
                                             setErrorMessage('Task name already exists')
                                             return;
