@@ -2,16 +2,11 @@ import admin from 'firebase-admin';
 import fs from 'fs';
 import path from 'path';
 
-let serviceAccount: any;
-
-try {
-  serviceAccount = require('./serviceAccountKey.json');
-} catch (e) {
-  throw new Error('Firebase credentials not found: add serviceAccountKey.json or set environment variables.');
-}
+// Load service account credentials in local dev from a project file, or in prod from Render secret, or from env vars
+let serviceAccount: admin.ServiceAccount;
 
 // 1. Local dev JSON file (placed next to firebase.ts)
-const localPath = path.join(__dirname, 'serviceAccountKey.json');
+const localPath = path.resolve(__dirname, '..', 'serviceAccountKey.json');
 if (fs.existsSync(localPath)) {
   serviceAccount = JSON.parse(
     fs.readFileSync(localPath, 'utf8')
@@ -19,6 +14,8 @@ if (fs.existsSync(localPath)) {
 } else {
   // 2. Render secret mount
   const secretPath = '/etc/secrets/serviceAccountKey.json';
+  console.log("🔍 Checking for local credentials at:", localPath);
+console.log("✅ File exists?", fs.existsSync(localPath));
   if (fs.existsSync(secretPath)) {
     serviceAccount = JSON.parse(
       fs.readFileSync(secretPath, 'utf8')
