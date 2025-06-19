@@ -5,6 +5,7 @@ import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-a
 import { createTask } from '../../shared/models/TaskModel';
 
 let currentTaskOrder = 0;
+console.log("🧪 updateTaskController hit");
 
 // Create a new task under a list
 export const createTaskController = async (req: Request, res: Response) => {
@@ -117,21 +118,22 @@ export const updateTaskController = async (req: Request, res: Response) => {
     }
 
     const updates: any = {};
-    if (req.body.name !== undefined) {
-      const name = validateName(req.body.name);
-      if (!name) return res.status(400).json({ error: 'Invalid task name' });
-      updates.name = name;
-    }
-    if (req.body.dueDate !== undefined) updates.dueDate = req.body.dueDate;
-    if (req.body.order !== undefined) updates.order = req.body.order;
-    if (req.body.completedAt !== undefined) updates.completedAt = req.body.completedAt;
-    if (req.body.tags !== undefined) updates.tags = req.body.tags;
+if (req.body.name !== undefined) {
+  const name = validateName(req.body.name);
+  if (!name) return res.status(400).json({ error: 'Invalid task name' });
+  updates.name = name;
+}
+if (req.body.dueDate !== undefined) updates.dueDate = req.body.dueDate;
+if (req.body.order !== undefined) updates.order = req.body.order;
+if (req.body.completedAt !== undefined) updates.completedAt = req.body.completedAt;
+if (req.body.tags !== undefined) updates.tags = req.body.tags;
 
-  console.log("🔥 Updates to apply:", updates);
+if (Object.keys(updates).length === 0) {
+  return res.status(400).json({ error: 'No valid fields to update' });
+}
 
-    await taskRef.update(updates);
-    const updated = await taskRef.get();
-    res.status(200).json({ task: updated.data()! });
+await taskRef.update(updates);
+
   } catch (err) {
     console.error("🔥 ERROR in updateTaskController:", err);
     res.status(500).json({ error: 'Server error' });
