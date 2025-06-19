@@ -43,8 +43,8 @@ export async function createTask(
   projectId: string,
   listId: string,
   name: string,
-  dueDate?: number,
-  tags?: string[]
+  // dueDate?: number,
+  // tags?: string[]
 ): Promise<Task> {
   const token = await getIdToken();
   const res = await fetch(
@@ -55,11 +55,16 @@ export async function createTask(
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ name, dueDate, tags }),
+      // body: JSON.stringify({ name, dueDate, tags }),
+      body: JSON.stringify({ name }),
+
     }
   );
-  if (!res.ok) throw new Error(`Failed to create task: ${res.status} ${res.statusText}`);
   const data = await res.json();
+  if (!res.ok) {
+    console.error('server error payload:', data);
+    throw new Error(data.error || `Failed to create task: ${res.status}`);
+  }
   return data.task;
 }
 

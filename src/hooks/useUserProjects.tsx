@@ -34,8 +34,6 @@ export default function useUserProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<string | null>(null);
   const [lists, setLists] = useState<List[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,8 +42,6 @@ export default function useUserProjects() {
     setProjects([]);
     setCurrentProject(null);
     setLists([]);
-    setTasks([]);
-    setSubtasks([]);
     setError(null);
     setLoading(false);
   }, []);
@@ -71,55 +67,39 @@ export default function useUserProjects() {
     })();
   }, [currentUser, resetAll]);
 
-  // Load lists, tasks and subtasks functions returning data
-  const loadLists = useCallback(async (projectId: string) => {
-    const ls = await apiGetLists(projectId);
-    setLists(ls);
-    return ls;
-  }, []);
-
-  const loadTasks = useCallback(async (projectId: string, listId: string) => {
-    const ts = await apiGetTasks(projectId, listId);
-    setTasks(ts);
-    return ts;
-  }, []);
-
-  const loadSubtasks = useCallback(
-    async (projectId: string, listId: string, taskId: string) => {
-      const sts = await apiGetSubtasks(projectId, listId, taskId);
-      setSubtasks(sts);
-      return sts;
-    },
-    []
-  );
-
-  // Combined effect: when currentProject changes, load lists → tasks → subtasks
+  // When project changes: fetch lists, tasks, and subtasks
   useEffect(() => {
-  if (!currentProject) {
-    setLists([]);
-    setTasks([]);
-    setSubtasks([]);
-    return;
-  }
-  (async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const ls = await loadLists(currentProject);
-      if (ls.length === 0) {
-        setTasks([]);
-        return;
-      }
-      const ts = await loadTasks(currentProject, ls[0].id);
-    } catch (e: any) {
-      setError(e.message ?? "Failed to load data");
-    } finally {
-      setLoading(false);
+    if (!currentProject) {
+      setLists([]);
+      return;
     }
-  })();
-}, [currentProject, loadLists, loadTasks, loadSubtasks]);
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const rawLists = await apiGetLists(currentProject);
+        const listsWithTasks = await Promise.all(
+          rawLists.map(async (l) => {
+            const ts = await apiGetTasks(currentProject, l.id);
+            const tasksWithSubs = await Promise.all(
+              ts.map(async (t) => {
+                const sts = await apiGetSubtasks(currentProject, l.id, t.id);
+                return { ...t, subtasks: sts };
+              })
+            );
+            return { ...l, tasks: tasksWithSubs };
+          })
+        );
+        setLists(listsWithTasks);
+      } catch (err: any) {
+        setError(err.message ?? "Failed to load lists, tasks, or subtasks");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [currentProject]);
 
-  // Projects
+  // Projects CRUD
   const addProject = useCallback(async (name: string) => {
     setLoading(true);
     setError(null);
@@ -136,166 +116,36 @@ export default function useUserProjects() {
     }
   }, []);
 
-  const deleteProject = useCallback(async (projectId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await apiDeleteProject(projectId);
-      setProjects((prev) => prev.filter((p) => p.id !== projectId));
-      if (currentProject === projectId) {
-        setCurrentProject(projects[0]?.id ?? null);
-      }
-    } catch (e: any) {
-      setError(e.message ?? "Unable to delete project");
-    } finally {
-      setLoading(false);
-    }
-  }, [currentProject, projects]);
-
-  const updateProject = useCallback(async (projectId: string, name: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const updated = await apiUpdateProject(projectId,{ name});
-      setProjects((prev) => prev.map((p) => (p.id === projectId ? updated : p)));
-      return updated;
-    } catch (e: any) {
-      setError(e.message ?? "Unable to update project");
-      throw e;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Lists
-  const addList = useCallback(async (projectId: string, name: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const newList = await apiCreateList(projectId, name);
-      setLists((prev) => [...prev, newList]);
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === projectId
-            ? { ...p, lists: [...(p.lists ?? []), newList] }
-            : p
-        )
-      );
-      return newList;
-    } catch (e: any) {
-      setError(e.message ?? "Unable to add list");
-      throw e;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const deleteList = useCallback(async (projectId: string, listId: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await apiDeleteList(projectId, listId);
-      setLists((prev) => prev.filter((l) => l.id !== listId));
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === projectId
-            ? { ...p, lists: p.lists.filter((l) => l.id !== listId) }
-            : p
-        )
-      );
-    } catch (e: any) {
-      setError(e.message ?? "Unable to delete list");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateList = useCallback(async (projectId: string, listId: string, name: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const updated = await apiUpdateList(projectId, listId, name);
-      setLists((prev) => prev.map((l) => (l.id === listId ? updated : l)));
-      setProjects(prev => {
-        console.log("prev projects:", prev);
-        prev.forEach(p => console.log(p.id, "lists:", p.lists));
-        return prev.map((p) =>
-          p.id === projectId
-            ? { ...p, lists: (p.lists ?? []).map((l) => (l.id === listId ? updated : l)) }
-            : p
-        )
-      });
-      return updated;
-    } catch (e: any) {
-      setError(e.message ?? "Unable to update list");
-      throw e;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Tasks
-  const addTask = useCallback(async (
-    projectId: string,
-    listId: string,
-    name: string,
-    dueDate?: number,
-    tags?: string[]
-  ) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const newTask = await apiCreateTask(projectId, listId, name, dueDate, tags);
-      setTasks((prev) => [...prev, newTask]);
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === projectId
-            ? {
-                ...p,
-                lists: (p.lists ?? []).map((l) =>
-                  l.id === listId
-                    ? { ...l, tasks: [...(l.tasks ?? []), newTask] }
-                    : l
-                ),
-              }
-            : p
-        )
-      );
-      return newTask;
-    } catch (e: any) {
-      setError(e.message ?? "Unable to add task");
-      throw e;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Remove a task
-  const deleteTask = useCallback(
-    async (projectId: string, listId: string, taskId: string) => {
+  const deleteProject = useCallback(
+    async (projectId: string) => {
       setLoading(true);
       setError(null);
       try {
-        await apiDeleteTask(projectId, listId, taskId);
-        // flat state
-        setTasks(prev => prev.filter(t => t.id !== taskId));
-        // nested in projects
-        setProjects(prev =>
-          prev.map(p =>
-            p.id === projectId
-              ? {
-                  ...p,
-                  lists: (p.lists ?? []).map(l =>
-                    l.id === listId
-                      ? { ...l, tasks: l.tasks.filter(t => t.id !== taskId) }
-                      : l
-                  ),
-                }
-              : p
-          )
-        );
+        await apiDeleteProject(projectId);
+        setProjects((prev) => prev.filter((p) => p.id !== projectId));
+        if (currentProject === projectId) {
+          setCurrentProject(projects[0]?.id ?? null);
+        }
       } catch (e: any) {
-        setError(e.message ?? 'Unable to delete task');
+        setError(e.message ?? "Unable to delete project");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentProject, projects]
+  );
+
+  const updateProject = useCallback(
+    async (projectId: string, name: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const updated = await apiUpdateProject(projectId, { name });
+        setProjects((prev) => prev.map((p) => (p.id === projectId ? updated : p)));
+        return updated;
+      } catch (e: any) {
+        setError(e.message ?? "Unable to update project");
+        throw e;
       } finally {
         setLoading(false);
       }
@@ -303,7 +153,132 @@ export default function useUserProjects() {
     []
   );
 
-  // Update a task
+  // Lists CRUD
+  const addList = useCallback(
+    async (projectId: string, name: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const newList = await apiCreateList(projectId, name);
+        setLists((prev) => [...prev, { ...newList, tasks: [] }]);
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? { ...p, lists: [...(p.lists ?? []), newList] }
+              : p
+          )
+        );
+        return newList;
+      } catch (e: any) {
+        setError(e.message ?? "Unable to add list");
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const deleteList = useCallback(
+    async (projectId: string, listId: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        await apiDeleteList(projectId, listId);
+        setLists((prev) => prev.filter((l) => l.id !== listId));
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? { ...p, lists: (p.lists ?? []).filter((l) => l.id !== listId) }
+              : p
+          )
+        );
+      } catch (e: any) {
+        setError(e.message ?? "Unable to delete list");
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const updateList = useCallback(
+    async (projectId: string, listId: string, name: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const updated = await apiUpdateList(projectId, listId, name);
+        setLists((prev) => prev.map((l) => (l.id === listId ? { ...updated, tasks: l.tasks } : l)));
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
+                  ...p,
+                  lists: (p.lists ?? []).map((l) =>
+                    l.id === listId ? updated : l
+                  ),
+                }
+              : p
+          )
+        );
+        return updated;
+      } catch (e: any) {
+        setError(e.message ?? "Unable to update list");
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  // Tasks CRUD (nested in lists)
+  const addTask = useCallback(
+    async (projectId: string, listId: string, name: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const newTask = await apiCreateTask(projectId, listId, name);
+        setLists((prev) =>
+          prev.map((l) =>
+            l.id === listId
+              ? { ...l, tasks: [...(l.tasks ?? []), { ...newTask, subtasks: [] }] }
+              : l
+          )
+        );
+        return newTask;
+      } catch (e: any) {
+        setError(e.message ?? "Unable to add task");
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const deleteTask = useCallback(
+    async (projectId: string, listId: string, taskId: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        await apiDeleteTask(projectId, listId, taskId);
+        setLists((prev) =>
+          prev.map((l) =>
+            l.id === listId
+              ? { ...l, tasks: (l.tasks ?? []).filter((t) => t.id !== taskId) }
+              : l
+          )
+        );
+      } catch (e: any) {
+        setError(e.message ?? "Unable to delete task");
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
   const updateTask = useCallback(
     async (
       projectId: string,
@@ -314,35 +289,28 @@ export default function useUserProjects() {
       setLoading(true);
       setError(null);
       try {
-        // strip nulls
         const payload: any = { ...updates };
         if (payload.dueDate === null) delete payload.dueDate;
         if (payload.completedAt === null) delete payload.completedAt;
 
         const updated = await apiUpdateTask(projectId, listId, taskId, payload);
-        // flat state
-        setTasks(prev => prev.map(t => (t.id === taskId ? updated : t)));
-        // nested in projects
-        setProjects(prev =>
-          prev.map(p =>
-            p.id === projectId
+        setLists((prev) =>
+          prev.map((l) =>
+            l.id === listId
               ? {
-                  ...p,
-                  lists: (p.lists ?? []).map(l =>
-                    l.id === listId
-                      ? {
-                          ...l,
-                          tasks: (l.tasks ?? []).map(t => (t.id === taskId ? updated : t)),
-                        }
-                      : l
+                  ...l,
+                  tasks: (l.tasks ?? []).map((t) =>
+                    t.id === taskId
+                      ? { ...updated, subtasks: t.subtasks }
+                      : t
                   ),
                 }
-              : p
+              : l
           )
         );
         return updated;
       } catch (e: any) {
-        setError(e.message ?? 'Unable to update task');
+        setError(e.message ?? "Unable to update task");
         throw e;
       } finally {
         setLoading(false);
@@ -351,64 +319,30 @@ export default function useUserProjects() {
     []
   );
 
-  // Toggle task completion
-  const toggleTask = useCallback(
-    async (projectId: string, listId: string, taskId: string) => {
-      const task = tasks.find(t => t.id === taskId);
-      if (!task) return;
-      return updateTask(projectId, listId, taskId, {
-        completedAt: task.completedAt ? null : Date.now(),
-      });
-    },
-    [tasks, updateTask]
-  );
-
-  // Create a new subtask
+  // Subtasks CRUD (nested in tasks)
   const addSubtask = useCallback(
-    async (
-      projectId: string,
-      listId: string,
-      taskId: string,
-      name: string,
-      dueDate?: number
-    ) => {
+    async (projectId: string, listId: string, taskId: string, name: string) => {
       setLoading(true);
       setError(null);
       try {
-        const newSub = await apiCreateSubtask(
-          projectId,
-          listId,
-          taskId,
-          name,
-          dueDate
-        );
-        // flat state
-        setSubtasks(prev => [...prev, newSub]);
-        // nested in projects
-        setProjects(prev =>
-          prev.map(p =>
-            p.id === projectId
+        const newSub = await apiCreateSubtask(projectId, listId, taskId, name);
+        setLists((prev) =>
+          prev.map((l) =>
+            l.id === listId
               ? {
-                  ...p,
-                  lists: (p.lists ?? []).map(l =>
-                    l.id === listId
-                      ? {
-                          ...l,
-                          tasks: (l.tasks ?? []).map(t =>
-                            t.id === taskId
-                              ? { ...t, subtasks: [...(t.subtasks ?? []), newSub] }
-                              : t
-                          ),
-                        }
-                      : l
+                  ...l,
+                  tasks: (l.tasks ?? []).map((t) =>
+                    t.id === taskId
+                      ? { ...t, subtasks: [...(t.subtasks ?? []), newSub] }
+                      : t
                   ),
                 }
-              : p
+              : l
           )
         );
         return newSub;
       } catch (e: any) {
-        setError(e.message ?? 'Unable to add subtask');
+        setError(e.message ?? "Unable to add subtask");
         throw e;
       } finally {
         setLoading(false);
@@ -417,47 +351,31 @@ export default function useUserProjects() {
     []
   );
 
-  // Remove a subtask
   const deleteSubtask = useCallback(
-    async (
-      projectId: string,
-      listId: string,
-      taskId: string,
-      subtaskId: string
-    ) => {
+    async (projectId: string, listId: string, taskId: string, subtaskId: string) => {
       setLoading(true);
       setError(null);
       try {
         await apiDeleteSubtask(projectId, listId, taskId, subtaskId);
-        // flat state
-        setSubtasks(prev => prev.filter(s => s.id !== subtaskId));
-        // nested in projects
-        setProjects(prev =>
-          prev.map(p =>
-            p.id === projectId
+        setLists((prev) =>
+          prev.map((l) =>
+            l.id === listId
               ? {
-                  ...p,
-                  lists: (p.lists ?? []).map(l =>
-                    l.id === listId
+                  ...l,
+                  tasks: (l.tasks ?? []).map((t) =>
+                    t.id === taskId
                       ? {
-                          ...l,
-                          tasks: (l.tasks ?? []).map(t =>
-                            t.id === taskId
-                              ? {
-                                  ...t,
-                                  subtasks: t.subtasks.filter(s => s.id !== subtaskId),
-                                }
-                              : t
-                          ),
+                          ...t,
+                          subtasks: (t.subtasks ?? []).filter((s) => s.id !== subtaskId),
                         }
-                      : l
+                      : t
                   ),
                 }
-              : p
+              : l
           )
         );
       } catch (e: any) {
-        setError(e.message ?? 'Unable to delete subtask');
+        setError(e.message ?? "Unable to delete subtask");
       } finally {
         setLoading(false);
       }
@@ -467,92 +385,87 @@ export default function useUserProjects() {
 
   // Update a subtask
   const updateSubtask = useCallback(
-    async (
-      projectId: string,
-      listId: string,
-      taskId: string,
-      subtaskId: string,
-      updates: Partial<Subtask>
-    ) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const payload: any = { ...updates };
-        if (payload.dueDate === null) delete payload.dueDate;
-        if (payload.completedAt === null) delete payload.completedAt;
+  async (
+    projectId: string,
+    listId: string,
+    taskId: string,
+    subtaskId: string,
+    updates: Partial<Subtask>
+  ) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const payload: any = { ...updates };
+      if (payload.dueDate === null) delete payload.dueDate;
+      if (payload.completedAt === null) delete payload.completedAt;
 
-        const updated = await apiUpdateSubtask(
-          projectId,
-          listId,
-          taskId,
-          subtaskId,
-          payload
-        );
-        // flat state
-        setSubtasks(prev => prev.map(s => (s.id === subtaskId ? updated : s)));
-        // nested in projects
-        setProjects(prev =>
-          prev.map(p =>
-            p.id === projectId
-              ? {
-                  ...p,
-                  lists: (p.lists ?? []).map(l =>
-                    l.id === listId
-                      ? {
-                          ...l,
-                          tasks: (l.tasks ?? []).map(t =>
-                            t.id === taskId
-                              ? {
-                                  ...t,
-                                  subtasks: (t.subtasks ?? []).map(s =>
-                                    s.id === subtaskId ? updated : s
-                                  ),
-                                }
-                              : t
-                          ),
-                        }
-                      : l
-                  ),
-                }
-              : p
-          )
-        );
-        return updated;
-      } catch (e: any) {
-        setError(e.message ?? 'Unable to update subtask');
-        throw e;
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+      const updated = await apiUpdateSubtask(
+        projectId,
+        listId,
+        taskId,
+        subtaskId,
+        payload
+      );
 
-  // Toggle subtask completion
-  const toggleSubtask = useCallback(
-    async (
-      projectId: string,
-      listId: string,
-      taskId: string,
-      subtaskId: string
-    ) => {
-      const sub = subtasks.find(s => s.id === subtaskId);
-      if (!sub) return;
-      return updateSubtask(projectId, listId, taskId, subtaskId, {
-        completedAt: sub.completedAt ? null : Date.now(),
-      });
-    },
-    [subtasks, updateSubtask]
-  );
+      setLists(prev =>
+        prev.map(l =>
+          l.id === listId
+            ? {
+                ...l,
+                tasks: (l.tasks ?? []).map(t =>
+                  t.id === taskId
+                    ? {
+                        ...t,
+                        subtasks: (t.subtasks ?? []).map(s =>
+                          s.id === subtaskId ? updated : s
+                        ),
+                      }
+                    : t
+                ),
+              }
+            : l
+        )
+      );
 
+      return updated;
+    } catch (e: any) {
+      setError(e.message ?? "Unable to update subtask");
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  },
+  []
+);
+
+const toggleSubtask = useCallback(
+  async (
+    projectId: string,
+    listId: string,
+    taskId: string,
+    subtaskId: string
+  ) => {
+    const list = lists.find(l => l.id === listId);
+    const task = list?.tasks.find(t => t.id === taskId);
+    const sub = task?.subtasks.find(s => s.id === subtaskId);
+    if (!sub) return;
+
+    return updateSubtask(
+      projectId,
+      listId,
+      taskId,
+      subtaskId,
+      { completedAt: sub.completedAt ? null : Date.now() }
+    );
+  },
+  [lists, updateSubtask]
+);
 
     return {
     projects,
     currentProject,
     setCurrentProject,
     lists,
-    tasks,
-    subtasks,
     loading,
     error,
     addProject,
@@ -564,10 +477,8 @@ export default function useUserProjects() {
     addTask,
     deleteTask,
     updateTask,
-    toggleTask,
     addSubtask,
     deleteSubtask,
     updateSubtask,
-    toggleSubtask,
   };
 }

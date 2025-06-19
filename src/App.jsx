@@ -39,17 +39,16 @@ export default function App() {
     setCurrentProject,
     addProject,
     deleteProject,
-    moveProjectUp,
-    moveProjectDown,
-    renameProject,
+    updateProject,
+    addList,
+    deleteList,
+    updateList,
     addTask,
     deleteTask,
-    checkTask,
-    editTask,
+    updateTask,
     addSubtask,
-    checkSubtask,
     deleteSubtask,
-    editSubtask,
+    updateSubtask,
     lists,
     loading,
   } = useUserProjects();
@@ -81,6 +80,8 @@ export default function App() {
             currentProject={currentProject}
             setCurrentProject={setCurrentProject}
             addProject={addProject}
+            deleteProject={deleteProject}
+            updateProject={updateProject}
           />
         </aside>
 
@@ -88,32 +89,22 @@ export default function App() {
           <main className="main-panel">
             <div className="list-task-container">
               {lists.map((list) => (
-                <div key = {list.id} className = "list-wrapper">
-                <List
-                  list={list}
-                  addTask={(taskName) =>
-                    addTask(currentProject, list.id, taskName)
-                  }
-  
-                />
+                <div key={list.id} className="list-wrapper">
+                  <List
+                    projectId={currentProject}
+                    list={list}
+                    addList={addList}
+                    deleteList={deleteList}
+                    updateList={updateList}
+                    addTask={addTask}
+                    deleteTask={deleteTask}
+                    updateTask={updateTask}
+                    addSubtask={addSubtask}
+                    deleteSubtask={deleteSubtask}
+                    updateSubtask={updateSubtask}
+                  />
                 </div>
               ))}
-              <TaskList
-                projects={projects}
-                currentProject={currentProject}
-                addTask={addTask}
-                checkTask={checkTask}
-                deleteTask={deleteTask}
-                editTask={editTask}
-                addSubtask={addSubtask}
-                checkSubtask={checkSubtask}
-                deleteSubtask={deleteSubtask}
-                editSubtask={editSubtask}
-                moveProjectUp={moveProjectUp}
-                moveProjectDown={moveProjectDown}
-                renameProject={renameProject}
-                deleteProject={deleteProject}
-              />
             </div>
           </main>
         </div>

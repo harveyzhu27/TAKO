@@ -24,25 +24,25 @@
     
 }
 
-.add-task-block {
+.add-task-block  {
+    border: none;
+    display: flex;
+    border-radius: 8px;
     background-color: orange;
+    margin: 8px;
+    padding: 8px;
+    min-height: 15px;
+    width: 240px;
 }
 
-.task-block {
-  /* display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  background-color: #22336b;
-  padding: 8px 12px;
-  margin-top: 6px;
-  border-radius: 8px;
-  color: white;
-  font-size: 1rem;
-  position: relative;
-  padding-right: 40px;  */
+.add-task-input {
+    border: none;
+    display: flex;
+    border-radius: 8px;
+    background-color: orange;
+    margin: 8px;
+    padding: 8px;
+    min-height: 20px;
+    width: 225px;
 }
-.task-list{ 
-    margin: 10px;
-    background-color: lightblue;
-    height: 100%;
-}
+

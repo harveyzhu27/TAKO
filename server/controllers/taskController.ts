@@ -8,6 +8,7 @@ let currentTaskOrder = 0;
 
 // Create a new task under a list
 export const createTaskController = async (req: Request, res: Response) => {
+  console.log('📥 createTask req.body =', req.body);
   try {
     const uid = (req as any).user.uid;
     const { projectid, listid } = req.params;
