@@ -6,7 +6,7 @@ import path from 'path';
 let serviceAccount: admin.ServiceAccount;
 
 // 1. Local dev JSON file (placed next to firebase.ts)
-const localPath = path.resolve(__dirname, '..', 'serviceAccountKey.json');
+const localPath = path.resolve(__dirname, '..', '..', 'serviceAccountKey.json');
 if (fs.existsSync(localPath)) {
   serviceAccount = JSON.parse(
     fs.readFileSync(localPath, 'utf8')
