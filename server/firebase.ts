@@ -2,8 +2,13 @@ import admin from 'firebase-admin';
 import fs from 'fs';
 import path from 'path';
 
-// Load service account credentials in local dev from a project file, or in prod from Render secret, or from env vars
-let serviceAccount: admin.ServiceAccount;
+let serviceAccount: any;
+
+try {
+  serviceAccount = require('./serviceAccountKey.json');
+} catch (e) {
+  throw new Error('Firebase credentials not found: add serviceAccountKey.json or set environment variables.');
+}
 
 // 1. Local dev JSON file (placed next to firebase.ts)
 const localPath = path.join(__dirname, 'serviceAccountKey.json');
