@@ -15,7 +15,6 @@ router.post('/:projectid/lists/:listid/tasks/:taskid/subtasks', authenticate, cr
 router.get('/:projectid/lists/:listid/tasks/:taskid/subtasks', authenticate, getAllSubtasksController);
 router.get('/:projectid/lists/:listid/tasks/:taskid/subtasks/:subtaskid', authenticate, getSubtaskByIdController);
 router.put('/:projectid/lists/:listid/tasks/:taskid/subtasks/:subtaskid', authenticate, updateSubtaskController);
-// router.put('/:projectid/lists/:listid/tasks/:taskid/subtasks/:subtaskid/check', authenticate, checkSubtaskController);
 router.delete('/:projectid/lists/:listid/tasks/:taskid/subtasks/:subtaskid', authenticate, deleteSubtaskController);
 
 export default router;

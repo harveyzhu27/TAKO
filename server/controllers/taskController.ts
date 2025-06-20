@@ -5,7 +5,6 @@ import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-a
 import { createTask } from '../../shared/models/TaskModel';
 
 let currentTaskOrder = 0;
-console.log("🧪 updateTaskController hit");
 
 // Create a new task under a list
 export const createTaskController = async (req: Request, res: Response) => {
@@ -101,39 +100,36 @@ export const getTaskController = async (req: Request, res: Response) => {
 // Update a task
 export const updateTaskController = async (req: Request, res: Response) => {
   try {
+
+    console.log("🛠 updateTaskController START");
     const uid = (req as any).user.uid;
-    console.log("📌 UID =", uid);
     const { projectid, listid, taskid } = req.params;
-  console.log("📌 Params =", { projectid, listid, taskid });
     const taskRef = db
       .collection('projects').doc(projectid)
       .collection('lists').doc(listid)
       .collection('tasks').doc(taskid);
     const taskSnap = await taskRef.get();
-     console.log("📌 Task exists?", taskSnap.exists);
-    if (!taskSnap.exists || taskSnap.data()?.uid !== uid){
-      console.log("❌ Task not found or forbidden");
-      
+    if (!taskSnap.exists || taskSnap.data()?.uid !== uid) {
+
       return res.status(404).json({ error: 'Task not found or forbidden' });
     }
 
     const updates: any = {};
-if (req.body.name !== undefined) {
-  const name = validateName(req.body.name);
-  if (!name) return res.status(400).json({ error: 'Invalid task name' });
-  updates.name = name;
-}
-if (req.body.dueDate !== undefined) updates.dueDate = req.body.dueDate;
-if (req.body.order !== undefined) updates.order = req.body.order;
-if (req.body.completedAt !== undefined) updates.completedAt = req.body.completedAt;
-if (req.body.tags !== undefined) updates.tags = req.body.tags;
+    if (req.body.name !== undefined) {
+      const name = validateName(req.body.name);
+      if (!name) return res.status(400).json({ error: 'Invalid task name' });
+      updates.name = name;
+    }
+    if (req.body.dueDate !== undefined) updates.dueDate = req.body.dueDate;
+    if (req.body.order !== undefined) updates.order = req.body.order;
+    if (req.body.completedAt !== undefined) updates.completedAt = req.body.completedAt;
+    if (req.body.tags !== undefined) updates.tags = req.body.tags;
 
-if (Object.keys(updates).length === 0) {
-  return res.status(400).json({ error: 'No valid fields to update' });
-}
-
-await taskRef.update(updates);
-
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+    await taskRef.update(updates);
+    console.log("✅ updateTaskController DONE");
   } catch (err) {
     console.error("🔥 ERROR in updateTaskController:", err);
     res.status(500).json({ error: 'Server error' });
