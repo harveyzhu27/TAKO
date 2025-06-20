@@ -115,6 +115,7 @@ export const updateProjectController = async (req: Request, res: Response) => {
 
     const updates: Partial<Record<string, any>> = {};
 
+    // Handle name update
     if (req.body.name !== undefined) {
       const name = validateName(req.body.name);
       if (!name) return res.status(400).json({ error: 'Invalid name' });
@@ -132,10 +133,12 @@ export const updateProjectController = async (req: Request, res: Response) => {
       updates.name = name;
     }
 
+    // Handle description update
     if (req.body.description !== undefined) {
       updates.description = req.body.description;
     }
 
+    // Handle move up/down
     if (req.body.move === "up" || req.body.move === "down") {
       const direction = req.body.move;
       const currentOrder = project.order;
@@ -153,18 +156,21 @@ export const updateProjectController = async (req: Request, res: Response) => {
         const neighborRef = neighborDoc.ref;
         const neighborOrder = neighborDoc.data().order;
 
-        const batch: WriteBatch = db.batch();
-        batch.update(projectRef, { order: neighborOrder });
-        batch.update(neighborRef, { order: currentOrder });
-        await batch.commit();
+        const batch = db.batch();
 
+        if (neighborOrder !== currentOrder) {
+          batch.update(projectRef, { order: neighborOrder });
+          batch.update(neighborRef, { order: currentOrder });
+          await batch.commit();
+        }
+
+        // Rebalance if spacing is tight
         const allProjectsSnap = await db.collection('projects')
           .where('uid', '==', uid)
           .orderBy('order')
           .get();
 
         let tooClose = false;
-
         for (let i = 1; i < allProjectsSnap.docs.length; i++) {
           const prev = allProjectsSnap.docs[i - 1].data().order;
           const curr = allProjectsSnap.docs[i].data().order;
@@ -175,20 +181,23 @@ export const updateProjectController = async (req: Request, res: Response) => {
         }
 
         if (tooClose) {
-          const batch = db.batch();
+          const rebalanceBatch = db.batch();
           allProjectsSnap.docs.forEach((doc, i) => {
             const newOrder = (i + 1) * 100;
-            batch.update(doc.ref, { order: newOrder });
+            const current = doc.data().order;
+            if (newOrder !== current) {
+              rebalanceBatch.update(doc.ref, { order: newOrder });
+            }
           });
-          await batch.commit();
+          await rebalanceBatch.commit();
         }
 
         const updatedSnap = await projectRef.get();
         return res.status(200).json({ project: updatedSnap.data()! });
       }
-
     }
 
+    // Fallback regular field update
     if (Object.keys(updates).length > 0) {
       await projectRef.update(updates);
     }
@@ -201,6 +210,7 @@ export const updateProjectController = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
 
 export const deleteProjectController = async (req: Request, res: Response) => {
   try {
