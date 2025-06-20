@@ -7,9 +7,9 @@ import { createList } from "../../shared/models/ListModel"
 
 let currentProjOrder = 0
 let currentListOrder = 0
-console.log('After this')
 
 export const createProjectController = async (req: Request, res: Response) => {
+  console.log(">>> createProjectController HIT!");
   try {
     const uid = (req as any).user.uid
 

@@ -7,6 +7,10 @@ import doNowRouter from './routes/doNow';
 
 const app = express();
 
+process.on('unhandledRejection', (err) => {
+  console.error('Unhandled Rejection:', err);
+});
+
 app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
   if (origin) {
