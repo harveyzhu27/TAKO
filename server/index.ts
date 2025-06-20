@@ -3,6 +3,7 @@ import projectsRouter from './routes/projects';
 import listsRouter from './routes/lists';
 import tasksRouter from './routes/tasks';
 import subtasksRouter from './routes/subtasks';
+import doNowRouter from './routes/doNow';
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/projects', projectsRouter);
 app.use('/projects', listsRouter);
 app.use('/projects', tasksRouter);
 app.use('/projects', subtasksRouter);
+app.use('/doNow', doNowRouter)
 
 // Health check
 app.get('/', (req, res) => {

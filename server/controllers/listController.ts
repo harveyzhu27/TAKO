@@ -104,27 +104,35 @@ export const updateListController = async (req: Request, res: Response) => {
 
     const projectRef = db.collection('projects').doc(projectid);
     const projectSnap = await projectRef.get();
-    if (!projectSnap.exists || projectSnap.data()?.uid !== uid) 
+    if (!projectSnap.exists || projectSnap.data()?.uid !== uid)
       return res.status(403).json({ error: 'Forbidden' });
 
     const listRef = projectRef.collection('lists').doc(listid);
     const listSnap = await listRef.get();
-    if (!listSnap.exists) 
+    if (!listSnap.exists)
       return res.status(404).json({ error: 'List not found' });
 
-    const name = validateName(req.body.name);
-    if (!name) 
-      return res.status(400).json({ error: 'Invalid list name' });
+    const updates: any = {};
+    if (req.body.name !== undefined) {
+      const name = validateName(req.body.name);
+      if (!name)
+        return res.status(400).json({ error: 'Invalid list name' });
+      const dupSnap = await projectRef
+        .collection('lists')
+        .where('name', '==', name)
+        .get();
+      if (!dupSnap.empty && dupSnap.docs[0].id !== listid)
+        return res.status(400).json({ error: 'Duplicate list name' });
+      updates.name = name;
+    }
+    if (req.body.order !== undefined) {
+      updates.order = req.body.order;
+    }
 
-    // Check duplicate
-    const dupSnap = await projectRef
-      .collection('lists')
-      .where('name', '==', name)
-      .get();
-    if (!dupSnap.empty && dupSnap.docs[0].id !== listid) 
-      return res.status(400).json({ error: 'Duplicate list name' });
+    if (Object.keys(updates).length === 0)
+      return res.status(400).json({ error: 'No valid fields to update' });
 
-    await listRef.update({ name });
+    await listRef.update(updates);
     const updated = await listRef.get();
     res.status(200).json({ list: updated.data()! });
   } catch (err) {

@@ -7,6 +7,7 @@ import { createList } from "../../shared/models/ListModel"
 
 let currentProjOrder = 0
 let currentListOrder = 0
+console.log('After this')
 
 export const createProjectController = async (req: Request, res: Response) => {
   try {
@@ -32,6 +33,7 @@ export const createProjectController = async (req: Request, res: Response) => {
     const nextOrder = lastOrder + 100;
 
     const projId = getNewProjId();
+    console.log("Generated projId:", projId); 
     const project = createProject({ id: projId, uid, name, order: nextOrder });
     const projectRef = db.collection('projects').doc(projId)
 
@@ -41,6 +43,7 @@ export const createProjectController = async (req: Request, res: Response) => {
 
     for (const listName of ['Do Now', 'Unnamed']) {
       const listId = getNewListId()
+      console.log("Generated listId:", listId);
       const list = createList({
         id: listId,
         uid,
@@ -107,7 +110,6 @@ export const updateProjectController = async (req: Request, res: Response) => {
     const uid = (req as any).user.uid;
     const projectRef = db.collection('projects').doc(req.params.id);
     const docSnap = await projectRef.get();
-
     if (!docSnap.exists) return res.status(404).json({ error: 'Project not found' });
 
     const project = docSnap.data()!;
@@ -115,7 +117,7 @@ export const updateProjectController = async (req: Request, res: Response) => {
 
     const updates: Partial<Record<string, any>> = {};
 
-    // Handle name update
+    // 1) Name
     if (req.body.name !== undefined) {
       const name = validateName(req.body.name);
       if (!name) return res.status(400).json({ error: 'Invalid name' });
@@ -125,64 +127,72 @@ export const updateProjectController = async (req: Request, res: Response) => {
         .where('uid', '==', uid)
         .where('name', '==', name)
         .get();
-
       if (!dup.empty && dup.docs[0].id !== req.params.id) {
         return res.status(400).json({ error: 'Duplicate name' });
       }
-
       updates.name = name;
     }
 
-    // Handle description update
+    // 2) Description
     if (req.body.description !== undefined) {
       updates.description = req.body.description;
     }
 
-    // Handle move up/down
-    if (req.body.move === "up" || req.body.move === "down") {
+    // 3) Move up/down
+    if (req.body.move === 'up' || req.body.move === 'down') {
       const direction = req.body.move;
       const currentOrder = project.order;
 
-      const query = db.collection('projects')
+      // Find neighbor
+      const neighborQuery = db.collection('projects')
         .where('uid', '==', uid)
-        .where('order', direction === "up" ? '<' : '>', currentOrder)
-        .orderBy('order', direction === "up" ? 'desc' : 'asc')
+        .where('order', direction === 'up' ? '<' : '>', currentOrder)
+        .orderBy('order', direction === 'up' ? 'desc' : 'asc')
         .limit(1);
-
-      const neighborSnap = await query.get();
+      const neighborSnap = await neighborQuery.get();
 
       if (!neighborSnap.empty) {
         const neighborDoc = neighborSnap.docs[0];
         const neighborRef = neighborDoc.ref;
         const neighborOrder = neighborDoc.data().order;
 
-        const batch = db.batch();
+        // Log orders before swap
+        console.log('🔄 Before swap:', [
+          { id: projectRef.id, order: currentOrder },
+          { id: neighborRef.id, order: neighborOrder }
+        ]);
 
+        // Swap in one batch
+        const batch: WriteBatch = db.batch();
         if (neighborOrder !== currentOrder) {
           batch.update(projectRef, { order: neighborOrder });
           batch.update(neighborRef, { order: currentOrder });
           await batch.commit();
         }
 
-        // Rebalance if spacing is tight
-        const allProjectsSnap = await db.collection('projects')
+        // Fetch all to check gaps
+        const allSnap = await db.collection('projects')
           .where('uid', '==', uid)
           .orderBy('order')
           .get();
+        const ordersBefore = allSnap.docs.map(doc => ({
+          id: doc.id,
+          order: doc.data().order
+        }));
+        console.log('⚡ Orders after swap, before rebalance check:', ordersBefore);
 
+        // Rebalance if needed
         let tooClose = false;
-        for (let i = 1; i < allProjectsSnap.docs.length; i++) {
-          const prev = allProjectsSnap.docs[i - 1].data().order;
-          const curr = allProjectsSnap.docs[i].data().order;
-          if (curr - prev <= 1) {
-            tooClose = true;
-            break;
-          }
+        for (let i = 1; i < allSnap.docs.length; i++) {
+          const prev = allSnap.docs[i - 1].data().order;
+          const curr = allSnap.docs[i].data().order;
+          if (curr - prev <= 1) { tooClose = true; break; }
         }
 
         if (tooClose) {
+          console.log('🔧 Rebalancing orders…');
           const rebalanceBatch = db.batch();
-          allProjectsSnap.docs.forEach((doc, i) => {
+          allSnap.docs.forEach((doc, i) => {
             const newOrder = (i + 1) * 100;
             const current = doc.data().order;
             if (newOrder !== current) {
@@ -190,6 +200,14 @@ export const updateProjectController = async (req: Request, res: Response) => {
             }
           });
           await rebalanceBatch.commit();
+
+          const afterRebalance = await db.collection('projects')
+            .where('uid', '==', uid)
+            .orderBy('order')
+            .get();
+          console.log('✅ Orders after rebalance:', 
+            afterRebalance.docs.map(d => ({ id: d.id, order: d.data().order }))
+          );
         }
 
         const updatedSnap = await projectRef.get();
@@ -197,21 +215,19 @@ export const updateProjectController = async (req: Request, res: Response) => {
       }
     }
 
-    // Fallback regular field update
+    // 4) Fallback: other field updates
     if (Object.keys(updates).length > 0) {
       await projectRef.update(updates);
     }
 
-    const updatedSnap = await projectRef.get();
-    res.status(200).json({ project: updatedSnap.data()! });
+    const finalSnap = await projectRef.get();
+    res.status(200).json({ project: finalSnap.data()! });
 
   } catch (err) {
-    console.error(err);
+    console.error('✖️ updateProjectController error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
-
-
 export const deleteProjectController = async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user.uid
