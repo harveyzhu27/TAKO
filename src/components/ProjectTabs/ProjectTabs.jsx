@@ -1,89 +1,127 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './ProjectTabs.css';
+
 function ProjectTabs({
-    projects,
-    currentProject,
-    addProject,
-    setCurrentProject,
+  projects,
+  currentProject,
+  addProject,
+  setCurrentProject,
+  deleteProject,
+  updateProject,
+  forceEditProjectId,
+  setForceEditProjectId,
 }) {
-    const [newProjectName, setProjectName] = useState("");
-    const [showAddOptions, setShowAddOption] = useState(false);
-    const [errorMessage, setErrorMessage] = useState("");
-    const [showHomeScreen, setShowHomeScreen] = useState(false);
-    const sortedProjects = [...projects].sort((a,b)=>a.order - b.order);
+  const [newProjectName, setProjectName] = useState("");
+  const [showAddOptions, setShowAddOption] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showHomeScreen, setShowHomeScreen] = useState(false);
+  const [editNameBuffer, setEditNameBuffer] = useState("");
+  const inputRef = useRef(null);
 
-    return (
-        <div className="project-tabs-container">
-            <button
-                className={showHomeScreen ? 'active-home-tab' : 'home-tab'}
-                onClick={() => {
-                    setShowHomeScreen(true);
-                    setCurrentProject("");
-                    setShowAddOption(false);
-                    console.log(`Clicked on Home`)
+  const sortedProjects = [...projects].sort((a, b) => a.order - b.order);
 
-                }}>Home</button>
-            {sortedProjects.map((project) => {
-                return (
-                    <button
-                        key={project.id}
-                        onClick={() => {
-                            setCurrentProject(project.id);
-                            setShowHomeScreen(false);
-                            setShowAddOption(false);
-                            console.log(`Clicked on ${project.name}`)
-                        }
-                        }
-                        className={(currentProject === project.id) ? 'active-tab' : 'basic-tab'}
-                    >
-                        {project.name}
-                    </button>
-                )
-            }
-            )}
-            {showAddOptions ? (
-                <div className='show-add-options-block'>
-                    <input
-                        className='add-project-box'
-                        autoFocus
-                        value={newProjectName}
-                        onChange={(e) => setProjectName(e.target.value)}
-                        onKeyDown={async (e) => {
-                            if (e.key === 'Enter') {
-                                const success = await addProject(newProjectName.trim())
-                                if (!success) {
-                                    setErrorMessage('Project name already exists')
-                                    return;
-                                }
-                                console.log(`Successfully added project ${newProjectName.trim()}`)
-                                setProjectName("");
-                                // TODO Set new project as current project
-                                // TODO Name doesn't go away upon pressing enter, and puts previous name in text box
-                                setShowAddOption(false);
-                                setErrorMessage("");
-                            }
-                            if (e.key === 'Escape') {
-                                console.log(`Escape was pressed`);
-                                setProjectName("");
-                                setShowAddOption(false);
-                                setErrorMessage("");
-                            }
-                        }} />
-                    {errorMessage &&
-                        <div className='error-message'>{errorMessage}</div>}
-                </div>
+  useEffect(() => {
+    const project = projects.find((p) => p.id === forceEditProjectId);
+    setEditNameBuffer(project?.name || "");
+  }, [forceEditProjectId, projects]);
+
+  useEffect(() => {
+    if (inputRef.current) inputRef.current.focus();
+  }, [forceEditProjectId]);
+
+  return (
+    <div className="project-tabs-container">
+      <button
+        className={showHomeScreen ? 'active-home-tab' : 'home-tab'}
+        onClick={() => {
+          setShowHomeScreen(true);
+          setCurrentProject("");
+          setShowAddOption(false);
+        }}
+      >
+        Home
+      </button>
+
+      {sortedProjects.map((project) => {
+        const isEditing = project.id === forceEditProjectId;
+        return (
+          <div key={project.id} className="project-tab-item">
+            {isEditing ? (
+              <input
+                ref={inputRef}
+                className="edit-project-name-input"
+                value={editNameBuffer}
+                onChange={(e) => setEditNameBuffer(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    updateProject(project.id, { name: editNameBuffer });
+                    setForceEditProjectId(null);
+                  } else if (e.key === 'Escape') {
+                    setForceEditProjectId(null);
+                  }
+                }}
+                onBlur={() => {
+                  updateProject(project.id, { name: editNameBuffer });
+                  setForceEditProjectId(null);
+                }}
+              />
             ) : (
-                <button
-                    autoFocus
-                    className='basic-tab'
-                    onClick={() => {
-                        setCurrentProject("");
-                        setShowAddOption(true)
-                        setShowHomeScreen(false)
-                    }}>Add</button>
+              <button
+                onClick={() => {
+                  setCurrentProject(project.id);
+                  setShowHomeScreen(false);
+                  setShowAddOption(false);
+                }}
+                className={currentProject === project.id ? 'active-tab' : 'basic-tab'}
+              >
+                {project.name}
+              </button>
             )}
+          </div>
+        );
+      })}
+
+      {showAddOptions ? (
+        <div className='show-add-options-block'>
+          <input
+            className='add-project-box'
+            autoFocus
+            value={newProjectName}
+            onChange={(e) => setProjectName(e.target.value)}
+            onKeyDown={async (e) => {
+              if (e.key === 'Enter') {
+                const success = await addProject(newProjectName.trim());
+                if (!success) {
+                  setErrorMessage('Project name already exists');
+                  return;
+                }
+                setProjectName("");
+                setShowAddOption(false);
+                setErrorMessage("");
+              }
+              if (e.key === 'Escape') {
+                setProjectName("");
+                setShowAddOption(false);
+                setErrorMessage("");
+              }
+            }}
+          />
+          {errorMessage && <div className='error-message'>{errorMessage}</div>}
         </div>
-    )
+      ) : (
+        <button
+          className='add-project-button'
+          onClick={() => {
+            setCurrentProject("");
+            setShowAddOption(true);
+            setShowHomeScreen(false);
+          }}
+        >
+          Add
+        </button>
+      )}
+    </div>
+  );
 }
 
 export default ProjectTabs;

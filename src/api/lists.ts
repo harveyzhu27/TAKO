@@ -51,15 +51,23 @@ export async function createList(projectId: string, name: string): Promise<List>
 }
 
 // Rename a list
-export async function updateList(projectId: string, listId: string, name: string): Promise<List> {
+export async function updateList(
+  projectId: string,
+  listId: string,
+  name?: string,
+  order?: number
+): Promise<List> {
   const token = await getIdToken();
+  const body: any = {};
+  if (name !== undefined) body.name = name;
+  if (order !== undefined) body.order = order;
   const res = await fetch(`${API_URL}/projects/${projectId}/lists/${listId}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Failed to update list: ${res.status} ${res.statusText}`);
   const data = await res.json();

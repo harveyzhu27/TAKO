@@ -43,7 +43,7 @@ export async function createTask(
   projectId: string,
   listId: string,
   name: string,
-  // dueDate?: number,
+  dueDate?: number,
   // tags?: string[]
 ): Promise<Task> {
   const token = await getIdToken();
@@ -56,7 +56,7 @@ export async function createTask(
         Authorization: `Bearer ${token}`,
       },
       // body: JSON.stringify({ name, dueDate, tags }),
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, dueDate}),
 
     }
   );

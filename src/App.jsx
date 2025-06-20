@@ -1,5 +1,4 @@
-// src/App.jsx
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuthContext } from "./hooks/useAuth.jsx";
 import SignUp from "./components/SignUp.jsx";
 import SignIn from "./components/SignIn.jsx";
@@ -13,6 +12,52 @@ import "./App.css";
 
 export default function App() {
   const { currentUser, logOut } = useAuthContext();
+
+  const {
+    projects,
+    currentProject,
+    setCurrentProject,
+    addProject,
+    deleteProject,
+    updateProject,
+    addList,
+    deleteList,
+    updateList,
+    moveList,
+    addTask,
+    deleteTask,
+    updateTask,
+    addSubtask,
+    deleteSubtask,
+    updateSubtask,
+    lists,
+    loading,
+  } = useUserProjects();
+
+  const [showDescription, setShowDescription] = useState(false);
+  const [descBuffer, setDescBuffer] = useState("");
+  const [forceEditProjectId, setForceEditProjectId] = useState(null);
+  const descPopupRef = useRef(null);
+
+  useEffect(() => {
+    const current = projects.find((p) => p.id === currentProject);
+    setDescBuffer(current?.description || "");
+  }, [currentProject]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (descPopupRef.current && !descPopupRef.current.contains(e.target)) {
+        updateProject(currentProject, { description: descBuffer });
+        setShowDescription(false);
+      }
+    };
+    if (showDescription) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDescription, descBuffer, currentProject]);
 
   if (!currentUser) {
     return (
@@ -33,80 +78,142 @@ export default function App() {
     );
   }
 
-  const {
-    projects,
-    currentProject,
-    setCurrentProject,
-    addProject,
-    deleteProject,
-    updateProject,
-    addList,
-    deleteList,
-    updateList,
-    addTask,
-    deleteTask,
-    updateTask,
-    addSubtask,
-    deleteSubtask,
-    updateSubtask,
-    lists,
-    loading,
-  } = useUserProjects();
-
   if (loading) {
-    return (
-      <div style={{ color: "white", textAlign: "center", marginTop: "2rem" }}>
-        Loading…
-      </div>
-    );
+    return <div className="loading">Loading…</div>;
   }
 
   return (
     <div className="app-wrapper">
-      <header className="app-header">
-        <div className="header-spacer" />
-        <div className="user-info">
-          Logged in as <strong>{currentUser.email}</strong>
-          <button className="logout-button" onClick={logOut}>
-            Log Out
-          </button>
-        </div>
-      </header>
-
       <div className="app-content">
-        <aside className="sidebar">
-          <ProjectTabs
-            projects={projects}
-            currentProject={currentProject}
-            setCurrentProject={setCurrentProject}
-            addProject={addProject}
-            deleteProject={deleteProject}
-            updateProject={updateProject}
-          />
-        </aside>
+        <div className="sidebar">
+          <div className="project-tab-list">
+            <ProjectTabs
+              projects={projects}
+              currentProject={currentProject}
+              setCurrentProject={setCurrentProject}
+              addProject={addProject}
+              deleteProject={deleteProject}
+              updateProject={updateProject}
+              forceEditProjectId={forceEditProjectId}
+              setForceEditProjectId={setForceEditProjectId}
+            />
+          </div>
+          <div className="user-info">
+            Logged in as <strong>{currentUser.email}</strong>
+            <button className="logout-button" onClick={logOut}>
+              Log Out
+            </button>
+          </div>
+        </div>
 
         <div className="main-section">
           <main className="main-panel">
             <div className="list-task-container">
-              {lists.map((list) => (
-                <div key={list.id} className="list-wrapper">
-                  <List
-                    projectId={currentProject}
-                    list={list}
-                    addList={addList}
-                    deleteList={deleteList}
-                    updateList={updateList}
-                    addTask={addTask}
-                    deleteTask={deleteTask}
-                    updateTask={updateTask}
-                    addSubtask={addSubtask}
-                    deleteSubtask={deleteSubtask}
-                    updateSubtask={updateSubtask}
-                  />
-                </div>
-              ))}
+              {lists
+                .sort((a, b) => a.order - b.order)
+                .map((list, idx) => (
+                  <div key={list.id} className="list-wrapper">
+                    <List
+                      projectId={currentProject}
+                      list={list}
+                      lists={lists}
+                      addList={addList}
+                      deleteList={deleteList}
+                      updateList={updateList}
+                      moveList={moveList}
+                      addTask={addTask}
+                      deleteTask={deleteTask}
+                      updateTask={updateTask}
+                      addSubtask={addSubtask}
+                      deleteSubtask={deleteSubtask}
+                      updateSubtask={updateSubtask}
+                      listCount={lists.length}
+                      isLeftmost={idx === 0}
+                      isRightmost={idx === lists.length - 1}
+                    />
+                  </div>
+                ))}
+
             </div>
           </main>
+        </div>
+
+        <div className="extra-taskbar">
+          {currentProject && (
+            <div className="project-actions">
+              <button
+                title="Edit Name"
+                onClick={() => setForceEditProjectId(currentProject)}
+              >
+                ✏️
+              </button>
+
+              <button
+                title="Edit Description"
+                onClick={() => setShowDescription(true)}
+              >
+                📄
+              </button>
+              <button
+                title="Move Up"
+                onClick={async () => {
+                  try {
+                    const updated = await updateProject(currentProject, { move: "up" });
+                  } catch (err) {
+                    console.error("Failed to move project up", err);
+                  }
+                }}
+              >
+                ⬆️
+              </button>
+
+              <button
+                title="Move Down"
+                onClick={async () => {
+                  try {
+                    const updated = await updateProject(currentProject, { move: "down" });
+                  } catch (err) {
+                    console.error("Failed to move project down", err);
+                  }
+                }}
+              >
+                ⬇️
+              </button>
+
+
+              <button
+                title="Add List"
+                onClick={() => addList(currentProject, "Untitled")}
+              >
+                ➕
+              </button>
+              <button
+                title="Delete Project"
+                onClick={() => {
+                  const currentIndex = projects.findIndex(p => p.id === currentProject);
+                  const sorted = [...projects].sort((a, b) => a.order - b.order);
+                  const nextProject = sorted[currentIndex + 1] || sorted[currentIndex - 1];
+
+                  deleteProject(currentProject).then(() => {
+                    if (nextProject) setCurrentProject(nextProject.id);
+                    else setCurrentProject(null);
+                  });
+                }}
+              >
+                🗑️
+              </button>
+            </div>
+          )}
+
+          {showDescription && (
+            <div className="description-popup" ref={descPopupRef}>
+              <textarea
+                autoFocus
+                value={descBuffer}
+                onChange={(e) => setDescBuffer(e.target.value)}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

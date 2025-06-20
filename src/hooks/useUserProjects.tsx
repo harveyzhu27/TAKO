@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuthContext } from "./useAuth.jsx";
 import type { Project } from "@shared/models/ProjectModel";
+
+type ProjectMove = "up" | "down";
+type ProjectUpdate = Partial<Project> & { move?: ProjectMove };
 import type { List } from "@shared/models/ListModel";
 import type { Task } from "@shared/models/TaskModel";
 import type { Subtask } from "@shared/models/SubtaskModel";
@@ -45,6 +48,14 @@ export default function useUserProjects() {
     setError(null);
     setLoading(false);
   }, []);
+
+
+useEffect(() => {
+  console.log(
+    "📋 Current projects (full objects, ordered):",
+    projects.slice().sort((a, b) => a.order - b.order)
+  );
+}, [projects]);
 
   // Load projects on auth change
   useEffect(() => {
@@ -136,12 +147,23 @@ export default function useUserProjects() {
   );
 
   const updateProject = useCallback(
-    async (projectId: string, name: string) => {
+    async (projectId: string, updates: ProjectUpdate) => {
       setLoading(true);
       setError(null);
       try {
-        const updated = await apiUpdateProject(projectId, { name });
-        setProjects((prev) => prev.map((p) => (p.id === projectId ? updated : p)));
+        const updated = await apiUpdateProject(projectId, updates);
+
+        if (updates.move) {
+          // fetch full list so neighbor order comes back too
+          const all = await apiGetAllProjects();
+          setProjects(all);
+        } else {
+          setProjects(prev =>
+            prev
+              .map(p => (p.id === updated.id ? updated : p))
+              .sort((a, b) => a.order - b.order)
+          );
+        }
         return updated;
       } catch (e: any) {
         setError(e.message ?? "Unable to update project");
@@ -152,6 +174,7 @@ export default function useUserProjects() {
     },
     []
   );
+
 
   // Lists CRUD
   const addList = useCallback(
@@ -213,11 +236,11 @@ export default function useUserProjects() {
           prev.map((p) =>
             p.id === projectId
               ? {
-                  ...p,
-                  lists: (p.lists ?? []).map((l) =>
-                    l.id === listId ? updated : l
-                  ),
-                }
+                ...p,
+                lists: (p.lists ?? []).map((l) =>
+                  l.id === listId ? updated : l
+                ),
+              }
               : p
           )
         );
@@ -232,13 +255,51 @@ export default function useUserProjects() {
     []
   );
 
+  const moveList = useCallback(
+  async (projectId: string, listId: string, direction: "left" | "right") => {
+    setLoading(true);
+    setError(null);
+    try {
+      const idx = lists.findIndex((l) => l.id === listId);
+      if (idx === -1) return;
+      const swapIdx = direction === "left" ? idx - 1 : idx + 1;
+      if (swapIdx < 0 || swapIdx >= lists.length) return;
+      const listA = lists[idx];
+      const listB = lists[swapIdx];
+      await apiUpdateList(projectId, listA.id, undefined, listB.order);
+      await apiUpdateList(projectId, listB.id, undefined, listA.order);
+      const updatedLists = await apiGetLists(projectId);
+      setLists(updatedLists.map(l => ({
+        ...l,
+        tasks: lists.find(orig => orig.id === l.id)?.tasks || []
+      })));
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === projectId
+            ? {
+                ...p,
+                lists: updatedLists,
+              }
+            : p
+        )
+      );
+    } catch (e: any) {
+      setError(e.message ?? "Unable to move list");
+    } finally {
+      setLoading(false);
+    }
+  },
+  [lists]
+);
+
+
   // Tasks CRUD (nested in lists)
   const addTask = useCallback(
-    async (projectId: string, listId: string, name: string) => {
+    async (projectId: string, listId: string, name: string, dueDate?: number) => {
       setLoading(true);
       setError(null);
       try {
-        const newTask = await apiCreateTask(projectId, listId, name);
+        const newTask = await apiCreateTask(projectId, listId, name, dueDate);  // updated
         setLists((prev) =>
           prev.map((l) =>
             l.id === listId
@@ -256,6 +317,7 @@ export default function useUserProjects() {
     },
     []
   );
+
 
   const deleteTask = useCallback(
     async (projectId: string, listId: string, taskId: string) => {
@@ -298,13 +360,13 @@ export default function useUserProjects() {
           prev.map((l) =>
             l.id === listId
               ? {
-                  ...l,
-                  tasks: (l.tasks ?? []).map((t) =>
-                    t.id === taskId
-                      ? { ...updated, subtasks: t.subtasks }
-                      : t
-                  ),
-                }
+                ...l,
+                tasks: (l.tasks ?? []).map((t) =>
+                  t.id === taskId
+                    ? { ...updated, subtasks: t.subtasks }
+                    : t
+                ),
+              }
               : l
           )
         );
@@ -330,13 +392,13 @@ export default function useUserProjects() {
           prev.map((l) =>
             l.id === listId
               ? {
-                  ...l,
-                  tasks: (l.tasks ?? []).map((t) =>
-                    t.id === taskId
-                      ? { ...t, subtasks: [...(t.subtasks ?? []), newSub] }
-                      : t
-                  ),
-                }
+                ...l,
+                tasks: (l.tasks ?? []).map((t) =>
+                  t.id === taskId
+                    ? { ...t, subtasks: [...(t.subtasks ?? []), newSub] }
+                    : t
+                ),
+              }
               : l
           )
         );
@@ -361,16 +423,16 @@ export default function useUserProjects() {
           prev.map((l) =>
             l.id === listId
               ? {
-                  ...l,
-                  tasks: (l.tasks ?? []).map((t) =>
-                    t.id === taskId
-                      ? {
-                          ...t,
-                          subtasks: (t.subtasks ?? []).filter((s) => s.id !== subtaskId),
-                        }
-                      : t
-                  ),
-                }
+                ...l,
+                tasks: (l.tasks ?? []).map((t) =>
+                  t.id === taskId
+                    ? {
+                      ...t,
+                      subtasks: (t.subtasks ?? []).filter((s) => s.id !== subtaskId),
+                    }
+                    : t
+                ),
+              }
               : l
           )
         );
@@ -385,83 +447,83 @@ export default function useUserProjects() {
 
   // Update a subtask
   const updateSubtask = useCallback(
-  async (
-    projectId: string,
-    listId: string,
-    taskId: string,
-    subtaskId: string,
-    updates: Partial<Subtask>
-  ) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const payload: any = { ...updates };
-      if (payload.dueDate === null) delete payload.dueDate;
-      if (payload.completedAt === null) delete payload.completedAt;
+    async (
+      projectId: string,
+      listId: string,
+      taskId: string,
+      subtaskId: string,
+      updates: Partial<Subtask>
+    ) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const payload: any = { ...updates };
+        if (payload.dueDate === null) delete payload.dueDate;
+        if (payload.completedAt === null) delete payload.completedAt;
 
-      const updated = await apiUpdateSubtask(
-        projectId,
-        listId,
-        taskId,
-        subtaskId,
-        payload
-      );
+        const updated = await apiUpdateSubtask(
+          projectId,
+          listId,
+          taskId,
+          subtaskId,
+          payload
+        );
 
-      setLists(prev =>
-        prev.map(l =>
-          l.id === listId
-            ? {
+        setLists(prev =>
+          prev.map(l =>
+            l.id === listId
+              ? {
                 ...l,
                 tasks: (l.tasks ?? []).map(t =>
                   t.id === taskId
                     ? {
-                        ...t,
-                        subtasks: (t.subtasks ?? []).map(s =>
-                          s.id === subtaskId ? updated : s
-                        ),
-                      }
+                      ...t,
+                      subtasks: (t.subtasks ?? []).map(s =>
+                        s.id === subtaskId ? updated : s
+                      ),
+                    }
                     : t
                 ),
               }
-            : l
-        )
+              : l
+          )
+        );
+
+        return updated;
+      } catch (e: any) {
+        setError(e.message ?? "Unable to update subtask");
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
+
+  const toggleSubtask = useCallback(
+    async (
+      projectId: string,
+      listId: string,
+      taskId: string,
+      subtaskId: string
+    ) => {
+      const list = lists.find(l => l.id === listId);
+      const task = list?.tasks.find(t => t.id === taskId);
+      const sub = task?.subtasks.find(s => s.id === subtaskId);
+      if (!sub) return;
+
+      return updateSubtask(
+        projectId,
+        listId,
+        taskId,
+        subtaskId,
+        { completedAt: sub.completedAt ? null : Date.now() }
       );
+    },
+    [lists, updateSubtask]
+  );
 
-      return updated;
-    } catch (e: any) {
-      setError(e.message ?? "Unable to update subtask");
-      throw e;
-    } finally {
-      setLoading(false);
-    }
-  },
-  []
-);
-
-const toggleSubtask = useCallback(
-  async (
-    projectId: string,
-    listId: string,
-    taskId: string,
-    subtaskId: string
-  ) => {
-    const list = lists.find(l => l.id === listId);
-    const task = list?.tasks.find(t => t.id === taskId);
-    const sub = task?.subtasks.find(s => s.id === subtaskId);
-    if (!sub) return;
-
-    return updateSubtask(
-      projectId,
-      listId,
-      taskId,
-      subtaskId,
-      { completedAt: sub.completedAt ? null : Date.now() }
-    );
-  },
-  [lists, updateSubtask]
-);
-
-    return {
+  return {
     projects,
     currentProject,
     setCurrentProject,
@@ -474,6 +536,7 @@ const toggleSubtask = useCallback(
     addList,
     deleteList,
     updateList,
+    moveList,
     addTask,
     deleteTask,
     updateTask,
