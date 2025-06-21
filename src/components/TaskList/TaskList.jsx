@@ -89,6 +89,7 @@ function TaskList({
                 type="number"
                 min={0}
                 value={editDeadline}
+                placeholder='0'
                 onChange={e => setEditDeadline(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
