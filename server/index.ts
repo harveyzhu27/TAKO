@@ -1,4 +1,5 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
+import cors from 'cors';
 import projectsRouter from './routes/projects';
 import listsRouter from './routes/lists';
 import tasksRouter from './routes/tasks';
@@ -6,23 +7,10 @@ import subtasksRouter from './routes/subtasks';
 import doNowRouter from './routes/doNow';
 
 const app = express();
+app.use(cors()); // or use origin option to restrict in production
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled Rejection:', err);
-});
-
-app.use((req: Request, res: Response, next: NextFunction) => {
-  const origin = req.headers.origin;
-  if (origin) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-  }
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  next();
 });
 
 // Body parsing
@@ -33,7 +21,7 @@ app.use('/projects', projectsRouter);
 app.use('/projects', listsRouter);
 app.use('/projects', tasksRouter);
 app.use('/projects', subtasksRouter);
-app.use('/doNow', doNowRouter)
+app.use('/doNow', doNowRouter);
 
 // Health check
 app.get('/', (req, res) => {
