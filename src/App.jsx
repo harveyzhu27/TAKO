@@ -27,9 +27,9 @@ export default function App() {
     addTask,
     deleteTask,
     updateTask,
-    addSubtask,
-    deleteSubtask,
-    updateSubtask,
+    // addSubtask,
+    // deleteSubtask,
+    // updateSubtask,
     lists,
     loading,
   } = useUserProjects();
@@ -124,9 +124,9 @@ export default function App() {
                       addTask={addTask}
                       deleteTask={deleteTask}
                       updateTask={updateTask}
-                      addSubtask={addSubtask}
-                      deleteSubtask={deleteSubtask}
-                      updateSubtask={updateSubtask}
+                      // addSubtask={addSubtask}
+                      // deleteSubtask={deleteSubtask}
+                      // updateSubtask={updateSubtask}
                       listCount={lists.length}
                       isLeftmost={idx === 0}
                       isRightmost={idx === lists.length - 1}

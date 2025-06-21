@@ -12,9 +12,9 @@ function List({
     addTask,
     deleteTask,
     updateTask,
-    addSubtask,
-    deleteSubtask,
-    updateSubtask,
+    // addSubtask,
+    // deleteSubtask,
+    // updateSubtask,
     listCount,
     isLeftmost,
     isRightmost,
@@ -119,12 +119,14 @@ function handleDelete() {
                     <span
                         onDoubleClick={() => {
                             !list.isUniversal && setEditingName(true)
-                        console.log(projectId, list.id)}}
+                            console.log(list.tasks)
+                        console.log(list.taskCount)
+                    }}
                         className={list.isUniversal ? 'do-now-list-name' : ''}
                         style={{ cursor: list.isUniversal ? 'not-allowed' : 'pointer' }}
                         title={list.isUniversal ? "Can't rename Do Now list" : "Double-click to rename"}
                     >
-                        {list.name}
+                        {list.name}{' ('}{list.taskCount}{')'}
                     </span>
                 )}
                 <button className="list-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
@@ -165,9 +167,9 @@ function handleDelete() {
                     addTask={addTask}
                     deleteTask={deleteTask}
                     updateTask={updateTask}
-                    addSubtask={addSubtask}
-                    deleteSubtask={deleteSubtask}
-                    updateSubtask={updateSubtask}
+                    // addSubtask={addSubtask}
+                    // deleteSubtask={deleteSubtask}
+                    // updateSubtask={updateSubtask}
                 />
                 {
                     (showAddTaskOptions) ? (

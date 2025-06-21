@@ -4,6 +4,7 @@ import { getProjects, createProject } from './api/projects';
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
   const [newName, setNewName] = useState('');
+  console.log('check that im using ProjectsPage')
 
   useEffect(() => {
     getProjects().then(setProjects).catch(console.error);

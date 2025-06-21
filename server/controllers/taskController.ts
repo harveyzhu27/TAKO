@@ -8,8 +8,6 @@ let currentTaskOrder = 0;
 
 // Create a new task under a list
 export const createTaskController = async (req: Request, res: Response) => {
-  // console.log('📥 createTask req.body =', req.body);
-  // console.log("🧾 UID from req.user.uid =", (req as any).user?.uid);
   try {
     const uid = (req as any).user.uid;
     const { projectid, listid } = req.params;
@@ -101,7 +99,6 @@ export const getTaskController = async (req: Request, res: Response) => {
 export const updateTaskController = async (req: Request, res: Response) => {
   try {
 
-    console.log("🛠 updateTaskController START");
     const uid = (req as any).user.uid;
     const { projectid, listid, taskid } = req.params;
     const taskRef = db
@@ -129,7 +126,6 @@ export const updateTaskController = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
     await taskRef.update(updates);
-    console.log("✅ updateTaskController DONE");
   } catch (err) {
     console.error("🔥 ERROR in updateTaskController:", err);
     res.status(500).json({ error: 'Server error' });

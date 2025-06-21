@@ -9,7 +9,6 @@ let currentProjOrder = 0
 let currentListOrder = 0
 
 export const createProjectController = async (req: Request, res: Response) => {
-  console.log(">>> createProjectController HIT!");
   try {
     const uid = (req as any).user.uid
 
@@ -33,7 +32,6 @@ export const createProjectController = async (req: Request, res: Response) => {
     const nextOrder = lastOrder + 100;
 
     const projId = getNewProjId();
-    console.log("Generated projId:", projId); 
     const project = createProject({ id: projId, uid, name, order: nextOrder });
     const projectRef = db.collection('projects').doc(projId)
 
@@ -43,7 +41,6 @@ export const createProjectController = async (req: Request, res: Response) => {
 
     for (const listName of ['Do Now', 'Unnamed']) {
       const listId = getNewListId()
-      console.log("Generated listId:", listId);
       const list = createList({
         id: listId,
         uid,
@@ -179,7 +176,6 @@ export const updateProjectController = async (req: Request, res: Response) => {
           id: doc.id,
           order: doc.data().order
         }));
-        console.log('⚡ Orders after swap, before rebalance check:', ordersBefore);
 
         // Rebalance if needed
         let tooClose = false;
@@ -190,7 +186,6 @@ export const updateProjectController = async (req: Request, res: Response) => {
         }
 
         if (tooClose) {
-          console.log('🔧 Rebalancing orders…');
           const rebalanceBatch = db.batch();
           allSnap.docs.forEach((doc, i) => {
             const newOrder = (i + 1) * 100;

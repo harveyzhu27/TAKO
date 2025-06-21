@@ -50,12 +50,12 @@ export default function useUserProjects() {
   }, []);
 
 
-useEffect(() => {
-  console.log(
-    "📋 Current projects (full objects, ordered):",
-    projects.slice().sort((a, b) => a.order - b.order)
-  );
-}, [projects]);
+  useEffect(() => {
+    console.log(
+      "📋 Current projects (full objects, ordered):",
+      projects.slice().sort((a, b) => a.order - b.order)
+    );
+  }, [projects]);
 
   // Load projects on auth change
   useEffect(() => {
@@ -78,37 +78,66 @@ useEffect(() => {
     })();
   }, [currentUser, resetAll]);
 
-  // When project changes: fetch lists, tasks, and subtasks
-  useEffect(() => {
-    if (!currentProject) {
-      setLists([]);
-      return;
+useEffect(() => {
+  if (!currentProject) {
+    setLists([]);
+    return;
+  }
+  (async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const rawLists = await apiGetLists(currentProject);
+      const listsWithTasks = await Promise.all(
+        rawLists.map(async (l) => {
+          const ts = await apiGetTasks(currentProject, l.id);
+          return { ...l, tasks: ts };
+        })
+      );
+      setLists(listsWithTasks);
+    } catch (err: any) {
+      setError(err.message ?? "Failed to load lists or tasks");
+    } finally {
+      setLoading(false);
     }
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const rawLists = await apiGetLists(currentProject);
-        const listsWithTasks = await Promise.all(
-          rawLists.map(async (l) => {
-            const ts = await apiGetTasks(currentProject, l.id);
-            const tasksWithSubs = await Promise.all(
-              ts.map(async (t) => {
-                const sts = await apiGetSubtasks(currentProject, l.id, t.id);
-                return { ...t, subtasks: sts };
-              })
-            );
-            return { ...l, tasks: tasksWithSubs };
-          })
-        );
-        setLists(listsWithTasks);
-      } catch (err: any) {
-        setError(err.message ?? "Failed to load lists, tasks, or subtasks");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [currentProject]);
+  })();
+}, [currentProject]);
+
+
+  // // When project changes: fetch lists, tasks, and subtasks
+  // useEffect(() => {
+  //   if (!currentProject) {
+  //     setLists([]);
+  //     return;
+  //   }
+  //   (async () => {
+  //     setLoading(true);
+  //     setError(null);
+  //     try {
+  //       const rawLists = await apiGetLists(currentProject);
+  //       const listsWithTasks = await Promise.all(
+  //         rawLists.map(async (l) => {
+  //           const ts = await apiGetTasks(currentProject, l.id);
+  //           const tasksWithSubs = await Promise.all(
+  //             ts.map(async (t) => {
+  //               const sts = await apiGetSubtasks(currentProject, l.id, t.id);
+  //               return {
+  //                 ...t,
+  //                 subtasks: sts 
+  //               };
+  //             })
+  //           );
+  //           return { ...l, tasks: tasksWithSubs };
+  //         })
+  //       );
+  //       setLists(listsWithTasks);
+  //     } catch (err: any) {
+  //       setError(err.message ?? "Failed to load lists, tasks, or subtasks");
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   })();
+  // }, [currentProject]);
 
   // Projects CRUD
   const addProject = useCallback(async (name: string) => {
@@ -256,41 +285,41 @@ useEffect(() => {
   );
 
   const moveList = useCallback(
-  async (projectId: string, listId: string, direction: "left" | "right") => {
-    setLoading(true);
-    setError(null);
-    try {
-      const idx = lists.findIndex((l) => l.id === listId);
-      if (idx === -1) return;
-      const swapIdx = direction === "left" ? idx - 1 : idx + 1;
-      if (swapIdx < 0 || swapIdx >= lists.length) return;
-      const listA = lists[idx];
-      const listB = lists[swapIdx];
-      await apiUpdateList(projectId, listA.id, undefined, listB.order);
-      await apiUpdateList(projectId, listB.id, undefined, listA.order);
-      const updatedLists = await apiGetLists(projectId);
-      setLists(updatedLists.map(l => ({
-        ...l,
-        tasks: lists.find(orig => orig.id === l.id)?.tasks || []
-      })));
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === projectId
-            ? {
+    async (projectId: string, listId: string, direction: "left" | "right") => {
+      setLoading(true);
+      setError(null);
+      try {
+        const idx = lists.findIndex((l) => l.id === listId);
+        if (idx === -1) return;
+        const swapIdx = direction === "left" ? idx - 1 : idx + 1;
+        if (swapIdx < 0 || swapIdx >= lists.length) return;
+        const listA = lists[idx];
+        const listB = lists[swapIdx];
+        await apiUpdateList(projectId, listA.id, undefined, listB.order);
+        await apiUpdateList(projectId, listB.id, undefined, listA.order);
+        const updatedLists = await apiGetLists(projectId);
+        setLists(updatedLists.map(l => ({
+          ...l,
+          tasks: lists.find(orig => orig.id === l.id)?.tasks || []
+        })));
+        setProjects((prev) =>
+          prev.map((p) =>
+            p.id === projectId
+              ? {
                 ...p,
                 lists: updatedLists,
               }
-            : p
-        )
-      );
-    } catch (e: any) {
-      setError(e.message ?? "Unable to move list");
-    } finally {
-      setLoading(false);
-    }
-  },
-  [lists]
-);
+              : p
+          )
+        );
+      } catch (e: any) {
+        setError(e.message ?? "Unable to move list");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [lists]
+  );
 
 
   // Tasks CRUD (nested in lists)
@@ -299,11 +328,13 @@ useEffect(() => {
       setLoading(true);
       setError(null);
       try {
-        const newTask = await apiCreateTask(projectId, listId, name, dueDate);  // updated
+        const newTask = await apiCreateTask(projectId, listId, name, dueDate);
         setLists((prev) =>
           prev.map((l) =>
             l.id === listId
-              ? { ...l, tasks: [...(l.tasks ?? []), { ...newTask, subtasks: [] }] }
+              // ? { ...l, tasks: [...(l.tasks ?? []), { ...newTask, subtasks: [] }],taskCount: (l.taskCount ?? 0) + 1 }
+              ? { ...l, tasks: [...(l.tasks ?? []), { ...newTask }], taskCount: (l.taskCount ?? 0) + 1 }
+
               : l
           )
         );
@@ -363,7 +394,9 @@ useEffect(() => {
                 ...l,
                 tasks: (l.tasks ?? []).map((t) =>
                   t.id === taskId
-                    ? { ...updated, subtasks: t.subtasks }
+                    // ? { ...updated, subtasks: t.subtasks }
+                    ? { ...updated }
+
                     : t
                 ),
               }
@@ -500,29 +533,6 @@ useEffect(() => {
     []
   );
 
-  const toggleSubtask = useCallback(
-    async (
-      projectId: string,
-      listId: string,
-      taskId: string,
-      subtaskId: string
-    ) => {
-      const list = lists.find(l => l.id === listId);
-      const task = list?.tasks.find(t => t.id === taskId);
-      const sub = task?.subtasks.find(s => s.id === subtaskId);
-      if (!sub) return;
-
-      return updateSubtask(
-        projectId,
-        listId,
-        taskId,
-        subtaskId,
-        { completedAt: sub.completedAt ? null : Date.now() }
-      );
-    },
-    [lists, updateSubtask]
-  );
-
   return {
     projects,
     currentProject,
@@ -540,8 +550,8 @@ useEffect(() => {
     addTask,
     deleteTask,
     updateTask,
-    addSubtask,
-    deleteSubtask,
-    updateSubtask,
+    // addSubtask,
+    // deleteSubtask,
+    // updateSubtask,
   };
 }

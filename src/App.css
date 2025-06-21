@@ -81,13 +81,18 @@ body {
 }
 
 .main-panel {
+  display: flex;
+  flex-direction: row;
+  overflow-x: auto;
+  padding-bottom: 12px;
   height: 100vh;
 }
 
 .list-task-container {
   display: flex;
-  gap: 10px;
-  height: 100%;
+  gap: 20px;
+  padding: 10px;
+  height: 95%;
 }
 
 .list-wrapper {

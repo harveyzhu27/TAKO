@@ -8,9 +8,9 @@ function TaskList({
   addTask,
   deleteTask,
   updateTask,
-  addSubtask,
-  deleteSubtask,
-  updateSubtask,
+  // addSubtask,
+  // deleteSubtask,
+  // updateSubtask,
 }) {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -56,13 +56,13 @@ function TaskList({
     <div className="task-block" key={`${listId}-${task.id}`}>
       <div className="task-bar">
         <input
-            type="checkbox"
-            checked={!!task.completedAt}
-            onChange={() => {
-              const completedAt = task.completedAt ? null : Date.now();
-              updateTask(projectId, listId, task.id, { completedAt });
-            }}
-          />
+          type="checkbox"
+          checked={!!task.completedAt}
+          onChange={() => {
+            const completedAt = task.completedAt ? null : Date.now();
+            updateTask(projectId, listId, task.id, { completedAt });
+          }}
+        />
         <div className="task-name-deadline">
           {editingTaskId === task.id ? (
             <>
@@ -75,7 +75,7 @@ function TaskList({
                   if (e.key === 'Enter') {
                     updateTask(projectId, listId, task.id, {
                       name: editName,
-                      deadline: editDeadline === '' ? null : Number(editDeadline),
+                      duedate: editDeadline === '' ? null : Number(editDeadline),
                     });
                     setEditingTaskId(null);
                   }
@@ -95,7 +95,7 @@ function TaskList({
                   if (e.key === 'Enter') {
                     updateTask(projectId, listId, task.id, {
                       name: editName,
-                      deadline: editDeadline === '' ? null : Number(editDeadline),
+                      dueDate: editDeadline === '' ? null : Number(editDeadline),
                     });
                     setEditingTaskId(null);
                   }
@@ -110,41 +110,41 @@ function TaskList({
               <span
                 className={`task-name ${task.completedAt ? "done-task" : ""}`}
                 onClick={() => {
+                  console.log(task)
                   setEditingTaskId(task.id);
                   setEditName(task.name);
-                  setEditDeadline(task.deadline ?? '');
+                  setEditDeadline(task.dueDate ?? '');
                 }}
               >
-                
                 {task.name}
               </span>
-              {task.deadline ? (
-                <span className="task-deadline">{formatDeadline(task.deadline)}</span>
+              {task.dueDate ? (
+                <span className="task-deadline">{formatDeadline(task.dueDate)}</span>
               ) : null}
               <div className="task-controls">
-          
-          <button
-            className="task-more-btn"
-            onClick={() =>
-              setMenuOpenId(prev => (prev === task.id ? null : task.id))
-            }
-          >
-            ⋮
-          </button>
-          {menuOpenId === task.id && (
-            <div className="task-menu-dropdown" ref={menuRef}>
-              <button
-                className="task-menu-item"
-                onClick={() => {
-                  deleteTask(projectId, listId, task.id);
-                  setMenuOpenId(null);
-                }}
-              >
-                Delete Task
-              </button>
-            </div>
-          )}
-        </div>
+
+                <button
+                  className="task-more-btn"
+                  onClick={() =>
+                    setMenuOpenId(prev => (prev === task.id ? null : task.id))
+                  }
+                >
+                  ⋮
+                </button>
+                {menuOpenId === task.id && (
+                  <div className="task-menu-dropdown" ref={menuRef}>
+                    <button
+                      className="task-menu-item"
+                      onClick={() => {
+                        deleteTask(projectId, listId, task.id);
+                        setMenuOpenId(null);
+                      }}
+                    >
+                      Delete Task
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
