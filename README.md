@@ -4,9 +4,10 @@ Designed for speed, focus, and flexibility—built with React, TypeScript, Expre
 Deployed @ https://tako-pink.vercel.app/
 
 Continous project!
-Currently working on: AI & Subtask Integration
+Currently working on: **AI & Subtask Integration**
 
 Tech Stack: 
+
 **Frontend:**
 React, TypeScript, CSS Modules, Vite
 
