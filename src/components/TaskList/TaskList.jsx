@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './TaskList.css';
+import SubtaskList from '../SubtaskList/SubtaskList';
 
 function TaskList({
   projectId,
@@ -8,14 +9,17 @@ function TaskList({
   addTask,
   deleteTask,
   updateTask,
-  // addSubtask,
-  // deleteSubtask,
-  // updateSubtask,
+  addSubtask,
+  deleteSubtask,
+  updateSubtask,
 }) {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editDeadline, setEditDeadline] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
+  const [showSubtaskInput, setShowSubtaskInput] = useState(false);
+  const [newSubtaskName, setNewSubtaskName] = useState('');
+  const [newSubtaskDeadline, setNewSubtaskDeadline] = useState('');
 
   const menuRef = useRef(null);
 
@@ -75,7 +79,7 @@ function TaskList({
                   if (e.key === 'Enter') {
                     updateTask(projectId, listId, task.id, {
                       name: editName,
-                      duedate: editDeadline === '' ? null : Number(editDeadline),
+                      dueDate: editDeadline === '' ? null : Number(editDeadline),
                     });
                     setEditingTaskId(null);
                   }
@@ -89,7 +93,7 @@ function TaskList({
                 type="number"
                 min={0}
                 value={editDeadline}
-                placeholder='0'
+                placeholder="0"
                 onChange={e => setEditDeadline(e.target.value)}
                 onKeyDown={e => {
                   if (e.key === 'Enter') {
@@ -104,13 +108,56 @@ function TaskList({
                   }
                 }}
               />
+              {showSubtaskInput ? (
+                <div className="subtask-input-block">
+                  <input
+                    className="subtask-name-input"
+                    type="text"
+                    placeholder="Subtask name"
+                    value={newSubtaskName}
+                    onChange={e => setNewSubtaskName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        const trimmed = newSubtaskName.trim();
+                        if (trimmed !== '') {
+                          addSubtask(
+                            projectId,
+                            listId,
+                            task.id,
+                            trimmed,
+                            newSubtaskDeadline === '' ? null : Number(newSubtaskDeadline)
+                          );
+                          setNewSubtaskName('');
+                          setNewSubtaskDeadline('');
+                        }
+                      }
+                      if (e.key === 'Escape') {
+                        setShowSubtaskInput(false);
+                        setNewSubtaskName('');
+                        setNewSubtaskDeadline('');
+                      }
+                    }}
+                  />
+                  <input
+                    className="subtask-date-input"
+                    type="number"
+                    min={0}
+                    placeholder="Due in..."
+                    value={newSubtaskDeadline}
+                    onChange={e => setNewSubtaskDeadline(e.target.value)}
+                  />
+                </div>
+              ) : (
+                <button className="add-subtask-button" onClick={() => setShowSubtaskInput(true)}>
+                  + Add Subtask
+                </button>
+              )}
             </>
           ) : (
             <>
               <span
                 className={`task-name ${task.completedAt ? "done-task" : ""}`}
                 onClick={() => {
-                  console.log(task)
                   setEditingTaskId(task.id);
                   setEditName(task.name);
                   setEditDeadline(task.dueDate ?? '');
@@ -122,7 +169,6 @@ function TaskList({
                 <span className="task-deadline">{formatDeadline(task.dueDate)}</span>
               ) : null}
               <div className="task-controls">
-
                 <button
                   className="task-more-btn"
                   onClick={() =>
@@ -149,8 +195,24 @@ function TaskList({
           )}
         </div>
       </div>
+
+      {/* Show subtasks */}
+      {(task.subtasks ?? []).length > 0 && (
+        <div className="subtask-wrapper">
+          <SubtaskList
+            projectId={projectId}
+            listId={listId}
+            taskId={task.id}
+            subtasks={task.subtasks}
+            addSubtask={addSubtask}
+            checkSubtask={updateSubtask}
+            deleteSubtask={deleteSubtask}
+            editSubtask={updateSubtask}
+          />
+        </div>
+      )}
     </div>
   ));
 }
 
-export default TaskList;
+export default React.memo(TaskList);

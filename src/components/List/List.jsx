@@ -12,9 +12,9 @@ function List({
     addTask,
     deleteTask,
     updateTask,
-    // addSubtask,
-    // deleteSubtask,
-    // updateSubtask,
+    addSubtask,
+    deleteSubtask,
+    updateSubtask,
     listCount,
     isLeftmost,
     isRightmost,
@@ -167,9 +167,9 @@ function handleDelete() {
                     addTask={addTask}
                     deleteTask={deleteTask}
                     updateTask={updateTask}
-                    // addSubtask={addSubtask}
-                    // deleteSubtask={deleteSubtask}
-                    // updateSubtask={updateSubtask}
+                    addSubtask={addSubtask}
+                    deleteSubtask={deleteSubtask}
+                    updateSubtask={updateSubtask}
                 />
                 {
                     (showAddTaskOptions) ? (

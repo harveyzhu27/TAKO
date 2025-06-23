@@ -1,7 +1,7 @@
 // src/api/subtasks.ts
 import { getAuth } from "firebase/auth";
 
-import type { Subtask } from "@shared/models/SubtaskModel";
+import type { Subtask, SubtaskUpdate } from "@shared/models/SubtaskModel";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -76,12 +76,7 @@ export async function updateSubtask(
   listId: string,
   taskId: string,
   subtaskId: string,
-  updates: Partial<{
-    name: string;
-    dueDate: number;
-    completedAt: number;
-    order: number;
-  }>
+  updates: SubtaskUpdate
 ): Promise<Subtask> {
   const token = await getIdToken();
   const res = await fetch(

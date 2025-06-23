@@ -51,3 +51,8 @@ export function createTask({
     subtasks: []
   };
 }
+
+
+export type TaskUpdate = Partial<
+  Pick<Task, "name" | "dueDate" | "completedAt" | "tags" | "order">
+>;

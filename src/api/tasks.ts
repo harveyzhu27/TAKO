@@ -1,7 +1,7 @@
 // src/api/tasks.ts
 import { getAuth } from "firebase/auth";
 
-import type { Task } from "@shared/models/TaskModel";
+import type { Task, TaskUpdate } from "@shared/models/TaskModel";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -73,13 +73,7 @@ export async function updateTask(
   projectId: string,
   listId: string,
   taskId: string,
-  updates: Partial<{
-    name: string;
-    dueDate: number;
-    completedAt: number;
-    tags: string[];
-    order: number;
-  }>
+  updates: TaskUpdate
 ): Promise<Task> {
   const token = await getIdToken();
   const res = await fetch(

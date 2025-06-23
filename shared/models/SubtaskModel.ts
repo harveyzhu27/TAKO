@@ -43,3 +43,7 @@ export function createSubtask({
     order,
   };
 }
+
+export type SubtaskUpdate = Partial<
+  Pick<Subtask, "name" | "dueDate" | "completedAt" | "order">
+>;
