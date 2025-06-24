@@ -106,7 +106,7 @@ export async function updateProject(
 
 export async function getProjectSummaries(): Promise<ProjectSummary[]> {
   try {
-    const res = await fetch('/api/projects/summaries');
+    const res = await fetch(`${API_URL}/projects/summaries`);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.message || `HTTP ${res.status}`);
