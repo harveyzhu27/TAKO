@@ -10,8 +10,8 @@ const authenticate = async (
   res: Response,
   next: NextFunction
 ) => {
-  // Allow CORS preflight
   if (req.method === 'OPTIONS') return next()
+    
 
   const authHeader = req.headers.authorization || ''
   const token = authHeader.startsWith('Bearer ')

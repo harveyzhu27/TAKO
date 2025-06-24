@@ -103,22 +103,36 @@ export async function updateProject(
   return data.project;
 }
 
-
 export async function getProjectSummaries(): Promise<ProjectSummary[]> {
+  try {
     const token = await getIdToken();
-    console.log("API_URL:", API_URL);
     const res = await fetch(`${API_URL}/projects/summaries`, {
       headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
     });
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Failed to fetch projects: ${res.status} ${res.statusText}\n${errText}`);
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(
+        `Server responded ${res.status} ${res.statusText} when fetching project summaries:\n${errText}`
+      );
+    }
+
+    const data = (await res.json()) as ProjectSummary[];
+    console.log('Project summaries:', data);
+    return data;
+
+  } catch (err: unknown) {
+    // err might be Error or something else
+    const message =
+      err instanceof Error
+        ? err.message
+        : JSON.stringify(err);
+    throw new Error(
+      `Failed to fetch project summaries (network or parsing error): ${message}`
+    );
   }
-  const data = await res.json();
-  console.log(data);
-  return data;
 }
 

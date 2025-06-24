@@ -18,6 +18,7 @@ app.use(express.json());
 
 // Routes
 app.use('/projects', projectsRouter);
+console.log('✅ Mounted /projects routes');
 app.use('/projects', listsRouter);
 app.use('/projects', tasksRouter);
 app.use('/projects', subtasksRouter);

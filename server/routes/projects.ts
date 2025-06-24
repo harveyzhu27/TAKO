@@ -19,5 +19,6 @@ router.put('/:id', authenticate, updateProjectController);
 router.delete('/:id', authenticate, deleteProjectController);
 router.put('/rebalance', authenticate, rebalanceProjectsController);
 router.get('/summaries', authenticate, getProjectSummariesController);
+// router.get('/summaries', getProjectSummariesController);
 
 export default router;
