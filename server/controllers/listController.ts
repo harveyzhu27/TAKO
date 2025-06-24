@@ -37,7 +37,6 @@ export const createListController = async (req: Request, res: Response) => {
       uid,
       name,
       projectId: projectid,
-      isUniversal: false,
       order: currentListOrder++,
     });
 
@@ -158,13 +157,9 @@ export const deleteListController = async (req: Request, res: Response) => {
     const listSnap = await listRef.get();
     if (!listSnap.exists) 
       return res.status(404).json({ error: 'List not found' });
-    if (listSnap.data()?.isUniversal) 
-      return res.status(400).json({ error: 'Cannot delete Do Now list' });
-
     // Must leave at least one non-universal list
     const otherLists = await projectRef
       .collection('lists')
-      .where('isUniversal', '==', false)
       .get();
     if (otherLists.size <= 1) 
       return res.status(400).json({ error: 'Must have at least one other list' });

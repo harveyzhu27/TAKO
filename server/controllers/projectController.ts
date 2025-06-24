@@ -35,22 +35,19 @@ export const createProjectController = async (req: Request, res: Response) => {
     const project = createProject({ id: projId, uid, name, order: nextOrder });
     const projectRef = db.collection('projects').doc(projId)
 
-    // batch all writes together
     const batch: WriteBatch = db.batch()
     batch.set(projectRef, project)
 
-    for (const listName of ['Do Now', 'Unnamed']) {
-      const listId = getNewListId()
-      const list = createList({
-        id: listId,
-        uid,
-        name: listName,
-        projectId: projId,
-        isUniversal: listName === 'Do Now',
-        order: currentListOrder++,
-      })
-      batch.set(projectRef.collection('lists').doc(listId), list)
-    }
+    const listId = getNewListId()
+  const list = createList({
+    id: listId,
+    uid,
+    name: 'Unnamed',
+    projectId: projId,
+    order: currentListOrder++,
+  })
+batch.set(projectRef.collection('lists').doc(listId), list)
+
 
     await batch.commit()
     res.status(201).json({ project })
@@ -75,6 +72,25 @@ export const getAllProjectsController = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Server error' })
   }
 }
+
+export const getProjectSummariesController = async (req: Request, res: Response) => {
+  console.log("📦 getProjectSummariesController called");
+  try {
+    const snap = await db
+      .collection('projects')
+      .select('name', 'order')
+      .get();
+    const summaries = snap.docs.map(doc => ({
+      id: doc.id,
+      name:    doc.data().name,
+      order:   doc.data().order ?? 0,
+    }));
+    return res.json(summaries);
+  } catch (err) {
+    console.error('Error fetching project summaries', err);
+    return res.status(500).json({ error: 'Failed to load project summaries' });
+  }
+};
 
 export const getProjectByIdController = async (req: Request, res: Response) => {
   try {

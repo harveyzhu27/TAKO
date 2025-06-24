@@ -95,19 +95,18 @@ export const getTaskController = async (req: Request, res: Response) => {
   }
 };
 
-// Update a task
 export const updateTaskController = async (req: Request, res: Response) => {
   try {
-
     const uid = (req as any).user.uid;
     const { projectid, listid, taskid } = req.params;
+
     const taskRef = db
       .collection('projects').doc(projectid)
       .collection('lists').doc(listid)
       .collection('tasks').doc(taskid);
+
     const taskSnap = await taskRef.get();
     if (!taskSnap.exists || taskSnap.data()?.uid !== uid) {
-
       return res.status(404).json({ error: 'Task not found or forbidden' });
     }
 
@@ -125,10 +124,15 @@ export const updateTaskController = async (req: Request, res: Response) => {
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
+
     await taskRef.update(updates);
+    const updatedSnap = await taskRef.get();
+    const updatedTask = updatedSnap.data();
+    return res.status(200).json({ task: updatedTask });
+
   } catch (err) {
     console.error("🔥 ERROR in updateTaskController:", err);
-    res.status(500).json({ error: 'Server error' });
+    return res.status(500).json({ error: 'Server error' });
   }
 };
 
