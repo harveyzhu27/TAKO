@@ -7,6 +7,7 @@ import ProjectTabs from "./components/ProjectTabs/ProjectTabs.jsx";
 import TaskList from "./components/TaskList/TaskList.jsx";
 import useUserProjects from "./hooks/useUserProjects.jsx";
 import List from "./components/List/List.jsx";
+// import { ProjectSummary } from "../shared/models/ProjectModel.ts"
 
 import "./App.css";
 
@@ -88,7 +89,7 @@ export default function App() {
         <div className="sidebar">
           <div className="project-tab-list">
             <ProjectTabs
-              projects={projects}
+              projects={[...projects].sort((a, b) => a.order - b.order)} 
               currentProject={currentProject}
               setCurrentProject={setCurrentProject}
               addProject={addProject}

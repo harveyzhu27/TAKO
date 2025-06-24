@@ -5,7 +5,6 @@ export interface List {
   uid: string;
   name: string;
   projectId: string;
-  isUniversal: boolean;
   order: number;
   taskCount: number;
   tasks: Task[]
@@ -16,14 +15,12 @@ export function createList({
   uid,
   name,
   projectId,
-  isUniversal,
   order,
 }: {
   id: string;
   uid:string;
   name: string;
   projectId: string;
-  isUniversal: boolean;
   order: number;
 }): List {
   return {
@@ -31,7 +28,6 @@ export function createList({
     uid,
     name,
     projectId,
-    isUniversal,
     order,
     taskCount: 0,
     tasks: [],

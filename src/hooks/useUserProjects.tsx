@@ -1,7 +1,7 @@
 // useUserProjects.ts
 import { useState, useEffect, useCallback } from "react";
 import { useAuthContext } from "./useAuth.jsx";
-import type { Project } from "@shared/models/ProjectModel";
+import type { Project, ProjectSummary } from "@shared/models/ProjectModel";
 import type { List } from "@shared/models/ListModel";
 import type { Task, TaskUpdate } from "@shared/models/TaskModel";
 import type { Subtask, SubtaskUpdate} from "@shared/models/SubtaskModel";
@@ -10,6 +10,7 @@ import {
   createProject as apiCreateProject,
   deleteProject as apiDeleteProject,
   updateProject as apiUpdateProject,
+  getProjectSummaries as apiGetProjectSummaries,
 } from "../api/projects";
 import {
   getLists as apiGetLists,
@@ -32,7 +33,7 @@ import {
 
 export default function useUserProjects() {
   const { currentUser } = useAuthContext();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [currentProject, setCurrentProject] = useState<string | null>(null);
   const [projectData, setProjectData] = useState<Record<string, List[]>>({});
   const [loading, setLoading] = useState(false);
@@ -56,25 +57,41 @@ export default function useUserProjects() {
       }));
     }, []);
 
-  useEffect(() => {
-    if (!currentUser) {
-      resetAll();
-      return;
-    }
-    (async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const projs = await apiGetAllProjects();
-        setProjects(projs);
-        setCurrentProject(projs[0]?.id ?? null);
-      } catch (e: any) {
-        setError(e.message ?? "Failed to load projects");
-      } finally {
-        setLoading(false);
+ useEffect(() => {
+  if (!currentUser) {
+    resetAll();
+    return;
+  }
+  let cancelled = false;
+  setLoading(true);
+  setError(null);
+  console.log("Fetching project summaries...");
+
+  (async () => {
+    try {
+      const summaries = await apiGetProjectSummaries();
+      console.log("Loaded summaries:", summaries);
+      if (!cancelled) {
+        setProjects(summaries);
+        setCurrentProject(summaries[0]?.id ?? null);
       }
-    })();
-  }, [currentUser, resetAll]);
+    } catch (e: any) {
+      if (!cancelled) setError(e.message ?? "Failed to load projects");
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
+  })();
+
+  return () => {
+    cancelled = true;
+  };
+}, [currentUser, resetAll]);
+
+
+  useEffect(() => {
+  console.log("🔄 projects state changed:", projects);
+}, [projects]);
+
 
   useEffect(() => {
     if (!currentProject || projectData[currentProject]) return;
@@ -106,11 +123,15 @@ export default function useUserProjects() {
 
   // Projects CRUD
   const addProject = useCallback(async (name: string) => {
+    console.log("✏️  addProject(", name, ")");
     setLoading(true);
     try {
+      
       const newProject = await apiCreateProject(name);
+    console.log("↩️ apiCreateProject returned", newProject);
       setProjects(prev => [...prev, newProject]);
       setProjectData(prev => ({ ...prev, [newProject.id]: [] }));
+      setCurrentProject(newProject.id);
       return newProject;
     } catch (e: any) {
       setError(e.message ?? "Unable to create project");
@@ -251,7 +272,6 @@ export default function useUserProjects() {
   const updateTask = useCallback(async (projectId: string, listId: string, taskId: string, updates: TaskUpdate) => {
     setLoading(true);
     try {
-
       const updated = await apiUpdateTask(projectId, listId, taskId, updates);
       updateProjectData(projectId, lists =>
         lists.map(l => l.id === listId

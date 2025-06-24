@@ -25,20 +25,8 @@ export function createProject({
   const list1: List = {
     id: getNewListId(),
     uid,
-    projectId: id,
-    name: "Do Now",
-    isUniversal: true,
-    order: 0,
-    taskCount: 0,
-    tasks: [],
-  };
-
-  const list2: List = {
-    id: getNewListId(),
-    uid,
     name: "Unnamed",
     projectId: id,
-    isUniversal: false,
     order: 1,
     taskCount: 0,
     tasks: [],
@@ -51,6 +39,10 @@ export function createProject({
     description: '',
     order,
     taskCount: 0,
-    lists: [list1, list2], 
+    lists: [list1], 
   };
 }
+
+
+
+export type ProjectSummary = Pick<Project, "id" | "name" | "order">;

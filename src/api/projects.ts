@@ -1,5 +1,5 @@
 import { getAuth } from "firebase/auth";
-import type { Project } from "@shared/models/ProjectModel";
+import type { Project, ProjectSummary} from "@shared/models/ProjectModel";
 
 // Base URL for your backend API
 const API_URL = import.meta.env.VITE_API_URL;
@@ -101,4 +101,19 @@ export async function updateProject(
 
   const data = await res.json();
   return data.project;
+}
+
+
+export async function getProjectSummaries(): Promise<ProjectSummary[]> {
+  try {
+    const res = await fetch('/api/projects/summaries');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${res.status}`);
+    }
+    return res.json();
+  } catch (e) {
+    console.error("❌ getProjectSummaries failed:", e);
+    throw e;
+  }
 }

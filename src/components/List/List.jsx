@@ -77,22 +77,18 @@ function List({
         setEditingName(false);
     }
 
-function handleDelete() {
-    if (list.isUniversal) {
-        setErrorMessage("Cannot delete the universal Do Now list.");
-        return;
+    function handleDelete() {
+        if (listCount <= 1) {
+            setErrorMessage("You must have at least one other list.");
+            return;
+        }
+        if (
+            window.confirm("Are you sure you want to delete this list? This cannot be undone.")
+        ) {
+            deleteList(projectId, list.id);
+            setErrorMessage("");
+        }
     }
-    if (listCount <= 2) {
-        setErrorMessage("You must have at least one other list besides Do Now.");
-        return;
-    }
-    if (
-        window.confirm("Are you sure you want to delete this list? This cannot be undone.")
-    ) {
-        deleteList(projectId, list.id);
-        setErrorMessage("");
-    }
-}
 
 
     function handleShift(direction) {
@@ -118,15 +114,15 @@ function handleDelete() {
                 ) : (
                     <span
                         onDoubleClick={() => {
-                            !list.isUniversal && setEditingName(true)
-                            console.log(list.tasks)
-                        console.log(list.taskCount)
-                    }}
-                        className={list.isUniversal ? 'do-now-list-name' : ''}
-                        style={{ cursor: list.isUniversal ? 'not-allowed' : 'pointer' }}
-                        title={list.isUniversal ? "Can't rename Do Now list" : "Double-click to rename"}
+                            setEditingName(true);
+                            console.log(list.tasks);
+                            console.log(list.taskCount);
+                        }}
+                        className="list-name"
+                        style={{ cursor: 'pointer' }}
+                        title="Double-click to rename"
                     >
-                        {list.name}{' ('}{list.taskCount}{')'}
+                        {list.name} ({list.taskCount})
                     </span>
                 )}
                 <button className="list-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
@@ -137,9 +133,9 @@ function handleDelete() {
                         <button
                             onClick={() => {
                                 handleDelete
-                                {console.log(listCount)}
+                                { console.log(listCount) }
                             }}
-                            disabled={list.isUniversal || listCount <= 2}
+                            disabled={listCount <= 1}
                         >
                             Delete List
                         </button>

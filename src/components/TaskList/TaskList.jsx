@@ -60,13 +60,16 @@ function TaskList({
     <div className="task-block" key={`${listId}-${task.id}`}>
       <div className="task-bar">
         <input
-          type="checkbox"
-          checked={!!task.completedAt}
-          onChange={() => {
-            const completedAt = task.completedAt ? null : Date.now();
-            updateTask(projectId, listId, task.id, { completedAt });
-          }}
-        />
+  type="checkbox"
+  checked={!!task.completedAt}
+  onChange={() => {
+    console.log("[TaskCheckbox] before toggle:", task.completedAt);
+    const completedAt = task.completedAt ? null : Date.now();
+    updateTask(projectId, listId, task.id, { completedAt })
+      .then(() => console.log("[TaskCheckbox] updateTask resolved"))
+      .catch(err => console.error("[TaskCheckbox] updateTask failed:", err));
+  }}
+/>
         <div className="task-name-deadline">
           {editingTaskId === task.id ? (
             <>
