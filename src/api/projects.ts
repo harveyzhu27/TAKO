@@ -105,15 +105,20 @@ export async function updateProject(
 
 
 export async function getProjectSummaries(): Promise<ProjectSummary[]> {
-  try {
-    const res = await fetch(`${API_URL}/projects/summaries`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `HTTP ${res.status}`);
-    }
-    return res.json();
-  } catch (e) {
-    console.error("❌ getProjectSummaries failed:", e);
-    throw e;
+    const token = await getIdToken();
+    console.log("API_URL:", API_URL);
+    const res = await fetch(`${API_URL}/projects/summaries`, {
+      headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch projects: ${res.status} ${res.statusText}\n${errText}`);
   }
+  const data = await res.json();
+  console.log(data);
+  return data;
 }
+

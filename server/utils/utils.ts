@@ -1,13 +1,11 @@
 // server/utils/utils.ts
 import { randomUUID } from 'crypto'
-console.log('HI')
 
 const USE_SIMPLE_IDS = false
 let simpleProjId = 1
 let simpleListId = 1
 let simpleTaskId = 1
 let simpleSubtaskId = 1
-console.log('USE_SIMPLE_IDS is', USE_SIMPLE_IDS);
 /** Generate a new project ID. */
 export function getNewProjId(): string {
   return USE_SIMPLE_IDS ? String(simpleProjId++) : randomUUID()

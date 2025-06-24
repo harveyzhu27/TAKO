@@ -39,14 +39,14 @@ export const createProjectController = async (req: Request, res: Response) => {
     batch.set(projectRef, project)
 
     const listId = getNewListId()
-  const list = createList({
-    id: listId,
-    uid,
-    name: 'Unnamed',
-    projectId: projId,
-    order: currentListOrder++,
-  })
-batch.set(projectRef.collection('lists').doc(listId), list)
+    const list = createList({
+      id: listId,
+      uid,
+      name: 'Unnamed',
+      projectId: projId,
+      order: currentListOrder++,
+    })
+    batch.set(projectRef.collection('lists').doc(listId), list)
 
 
     await batch.commit()
@@ -76,14 +76,17 @@ export const getAllProjectsController = async (req: Request, res: Response) => {
 export const getProjectSummariesController = async (req: Request, res: Response) => {
   console.log("📦 getProjectSummariesController called");
   try {
+    const uid = (req as any).user.uid
+
     const snap = await db
       .collection('projects')
+      .where('uid', '==', uid)
       .select('name', 'order')
       .get();
     const summaries = snap.docs.map(doc => ({
       id: doc.id,
-      name:    doc.data().name,
-      order:   doc.data().order ?? 0,
+      name: doc.data().name,
+      order: doc.data().order ?? 0,
     }));
     return res.json(summaries);
   } catch (err) {
@@ -216,7 +219,7 @@ export const updateProjectController = async (req: Request, res: Response) => {
             .where('uid', '==', uid)
             .orderBy('order')
             .get();
-          console.log('✅ Orders after rebalance:', 
+          console.log('✅ Orders after rebalance:',
             afterRebalance.docs.map(d => ({ id: d.id, order: d.data().order }))
           );
         }
