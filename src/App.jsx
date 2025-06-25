@@ -15,24 +15,37 @@ export default function App() {
   const { currentUser, logOut } = useAuthContext();
 
   const {
-    projects,
+    projectSummaries,
     currentProject,
     setCurrentProject,
-    addProject,
-    deleteProject,
-    updateProject,
-    addList,
-    deleteList,
-    updateList,
-    moveList,
-    addTask,
-    deleteTask,
-    updateTask,
-    addSubtask,
-    deleteSubtask,
-    updateSubtask,
+
     lists,
+    fullProject,           // Project|null, or null if none selected
+
+    // loading & error
     loading,
+    error,
+
+    // project‐level actions
+    addProject,
+    updateProject,
+    deleteProject,
+
+    // list‐level actions
+    addList,
+    updateList,
+    deleteList,
+    moveList,
+
+    // task‐level actions
+    addTask,
+    updateTask,
+    deleteTask,
+
+    // subtask‐level actions
+    addSubtask,
+    updateSubtask,
+    deleteSubtask,
   } = useUserProjects();
 
   const [showDescription, setShowDescription] = useState(false);
@@ -41,14 +54,17 @@ export default function App() {
   const descPopupRef = useRef(null);
 
   useEffect(() => {
-    const current = projects.find((p) => p.id === currentProject);
-    setDescBuffer(current?.description || "");
-  }, [currentProject]);
+    setDescBuffer(fullProject?.description || "");
+  }, [fullProject]);
+
+  // Removed redundant effect that used `projects`
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (descPopupRef.current && !descPopupRef.current.contains(e.target)) {
-        updateProject(currentProject, { description: descBuffer });
+        if (currentProject) {
+          updateProject(currentProject, { description: descBuffer });
+        }
         setShowDescription(false);
       }
     };
@@ -58,7 +74,7 @@ export default function App() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showDescription, descBuffer, currentProject]);
+  }, [showDescription, descBuffer, currentProject, updateProject]);
 
   if (!currentUser) {
     return (
@@ -89,7 +105,7 @@ export default function App() {
         <div className="sidebar">
           <div className="project-tab-list">
             <ProjectTabs
-              projects={[...projects].sort((a, b) => a.order - b.order)} 
+              projects={[...projectSummaries].sort((a, b) => a.order - b.order)} 
               currentProject={currentProject}
               setCurrentProject={setCurrentProject}
               addProject={addProject}
@@ -111,6 +127,7 @@ export default function App() {
           <main className="main-panel">
             <div className="list-task-container">
               {lists
+                .slice()  // copy before sort
                 .sort((a, b) => a.order - b.order)
                 .map((list, idx) => (
                   <div key={list.id} className="list-wrapper">
@@ -159,7 +176,7 @@ export default function App() {
                 title="Move Up"
                 onClick={async () => {
                   try {
-                    const updated = await updateProject(currentProject, { move: "up" });
+                    await updateProject(currentProject, { move: "up" });
                   } catch (err) {
                     console.error("Failed to move project up", err);
                   }
@@ -172,7 +189,7 @@ export default function App() {
                 title="Move Down"
                 onClick={async () => {
                   try {
-                    const updated = await updateProject(currentProject, { move: "down" });
+                    await updateProject(currentProject, { move: "down" });
                   } catch (err) {
                     console.error("Failed to move project down", err);
                   }
@@ -180,7 +197,6 @@ export default function App() {
               >
                 ⬇️
               </button>
-
 
               <button
                 title="Add List"
@@ -191,8 +207,8 @@ export default function App() {
               <button
                 title="Delete Project"
                 onClick={() => {
-                  const currentIndex = projects.findIndex(p => p.id === currentProject);
-                  const sorted = [...projects].sort((a, b) => a.order - b.order);
+                  const currentIndex = projectSummaries.findIndex(p => p.id === currentProject);
+                  const sorted = [...projectSummaries].sort((a, b) => a.order - b.order);
                   const nextProject = sorted[currentIndex + 1] || sorted[currentIndex - 1];
 
                   deleteProject(currentProject).then(() => {

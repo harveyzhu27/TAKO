@@ -50,7 +50,7 @@ export const createProjectController = async (req: Request, res: Response) => {
 
 
     await batch.commit()
-    res.status(201).json({ project })
+    res.status(201).json({ project, list })
   } catch (err) {
     console.error(err)
     res.status(500).json({ error: 'Server error' })
@@ -75,19 +75,22 @@ export const getAllProjectsController = async (req: Request, res: Response) => {
 
 export const getProjectSummariesController = async (req: Request, res: Response) => {
   console.log("📦 getProjectSummariesController called");
+  console.log(`→ GET ${req.method} ${req.originalUrl} headers:`, req.headers);
   try {
+    console.log('↪ req.user:', (req as any).user);
     const uid = (req as any).user.uid
-
-    const snap = await db
-      .collection('projects')
+    
+    const snapshot = await db.collection('projects')
       .where('uid', '==', uid)
       .select('name', 'order')
       .get();
-    const summaries = snap.docs.map(doc => ({
+      console.log(`🔍 Found ${snapshot.size} project(s) for uid=${uid}`);
+    const summaries = snapshot.docs.map(doc => ({
       id: doc.id,
       name: doc.data().name,
       order: doc.data().order ?? 0,
     }));
+     console.log('📦 Sending summaries:', summaries);
     return res.json(summaries);
   } catch (err) {
     console.error('Error fetching project summaries', err);

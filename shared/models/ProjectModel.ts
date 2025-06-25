@@ -43,6 +43,4 @@ export function createProject({
   };
 }
 
-
-
-export type ProjectSummary = Pick<Project, "id" | "name" | "order">;
+export type ProjectSummary = Pick<Project, "id" | "name" | "order" | "description" | "taskCount">;

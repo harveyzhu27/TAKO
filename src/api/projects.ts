@@ -1,5 +1,6 @@
 import { getAuth } from "firebase/auth";
 import type { Project, ProjectSummary} from "@shared/models/ProjectModel";
+import type { List} from "@shared/models/ListModel";
 
 // Base URL for your backend API
 const API_URL = import.meta.env.VITE_API_URL;
@@ -61,7 +62,7 @@ export async function deleteProject(id: string): Promise<void> {
 }
 
 // Create a new project
-export async function createProject(name: string): Promise<Project> {
+export async function createProject(name: string): Promise<{ project: Project, list: List}> {
   const token = await getIdToken();
   const res = await fetch(`${API_URL}/projects`, {
     method: 'POST',
@@ -76,8 +77,11 @@ export async function createProject(name: string): Promise<Project> {
     throw new Error(`Failed to create project: ${res.status} ${res.statusText}`);
   }
 
-  const data = await res.json();
-  return data.project;
+  const data = await res.json() as { project: Project, list: List};
+  return {
+    project: data.project,
+    list: data.list
+  };
 }
 
 // Update an existing project
@@ -104,7 +108,7 @@ export async function updateProject(
 }
 
 export async function getProjectSummaries(): Promise<ProjectSummary[]> {
-  try {
+
     const token = await getIdToken();
     const res = await fetch(`${API_URL}/projects/summaries`, {
       headers: {
@@ -123,16 +127,5 @@ export async function getProjectSummaries(): Promise<ProjectSummary[]> {
     const data = (await res.json()) as ProjectSummary[];
     console.log('Project summaries:', data);
     return data;
-
-  } catch (err: unknown) {
-    // err might be Error or something else
-    const message =
-      err instanceof Error
-        ? err.message
-        : JSON.stringify(err);
-    throw new Error(
-      `Failed to fetch project summaries (network or parsing error): ${message}`
-    );
   }
-}
 
