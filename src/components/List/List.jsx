@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './List.css';
 import TaskList from '../TaskList/TaskList';
+
 function List({
     projectId,
     list,
@@ -48,7 +49,6 @@ function List({
         return () => document.removeEventListener('mousedown', handleClick);
     }, [menuOpen]);
 
-
     useEffect(() => {
         if (!showAddTaskOptions) return;
 
@@ -90,11 +90,24 @@ function List({
         }
     }
 
+    function handleClearTasks() {
+        const completedTasks = (list.tasks || []).filter(task => task.completedAt);
+        if (completedTasks.length === 0) return;
+        if (
+            window.confirm("Are you sure you want to clear all completed tasks in this list? This cannot be undone.")
+        ) {
+            completedTasks.forEach(task => deleteTask(projectId, list.id, task.id));
+            setMenuOpen(false);
+            setErrorMessage("");
+        }
+    }
 
     function handleShift(direction) {
         moveList(projectId, list.id, direction);
         setMenuOpen(false);
     }
+
+    const hasCompleted = (list.tasks || []).some(task => task.completedAt);
 
     return (
         <div className='list-container'>
@@ -115,8 +128,6 @@ function List({
                     <span
                         onDoubleClick={() => {
                             setEditingName(true);
-                            console.log(list.tasks);
-                            console.log(list.taskCount);
                         }}
                         className="list-name"
                         style={{ cursor: 'pointer' }}
@@ -131,13 +142,16 @@ function List({
                 {menuOpen && (
                     <div className="list-menu-row" ref={menuRef}>
                         <button
-                            onClick={() => {
-                                handleDelete
-                                { console.log(listCount) }
-                            }}
+                            onClick={handleDelete}
                             disabled={listCount <= 1}
                         >
                             Delete List
+                        </button>
+                        <button
+                            onClick={handleClearTasks}
+                            disabled={!hasCompleted}
+                        >
+                            Clear Completed Tasks
                         </button>
                         <button
                             onClick={() => handleShift('left')}
@@ -168,15 +182,15 @@ function List({
                     updateSubtask={updateSubtask}
                 />
                 {
-                    (showAddTaskOptions) ? (
+                    showAddTaskOptions ? (
                         <div className="task-input" ref={taskInputRef}>
                             <input
                                 className='add-task-input'
                                 autoFocus
                                 placeholder='Add task...'
                                 value={newTaskName}
-                                onChange={(e) => setTaskName(e.target.value)}
-                                onKeyDown={async (e) => {
+                                onChange={e => setTaskName(e.target.value)}
+                                onKeyDown={async e => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
                                         const trimmedName = newTaskName.trim();
@@ -190,7 +204,6 @@ function List({
                                             setErrorMessage("Task name already exists");
                                             return;
                                         }
-                                        console.log(`Successfully added task ${trimmedName}`);
                                         setTaskName("");
                                         setTaskDeadline("");
                                         setShowAddTaskOption(false);
@@ -210,8 +223,8 @@ function List({
                                 min={0}
                                 placeholder='0'
                                 value={newTaskDeadline}
-                                onChange={(e) => setTaskDeadline(e.target.value)}
-                                onKeyDown={async (e) => {
+                                onChange={e => setTaskDeadline(e.target.value)}
+                                onKeyDown={async e => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
                                         const trimmedName = newTaskName.trim();
@@ -225,14 +238,13 @@ function List({
                                             setErrorMessage("Task name already exists");
                                             return;
                                         }
-                                        console.log(`Successfully added task ${trimmedName}`);
                                         setTaskName("");
                                         setTaskDeadline("");
                                         setShowAddTaskOption(false);
                                         setErrorMessage("");
                                     }
                                     if (e.key === 'Escape') {
-                                        setTaskDeadline("");
+                                        setNewTaskDeadline("");
                                         setShowAddTaskOption(false);
                                         setErrorMessage("");
                                     }
@@ -247,16 +259,14 @@ function List({
                         <button
                             autoFocus
                             className="add-task-block"
-                            onClick={() => {
-                                setShowAddTaskOption(true)
-                            }
-                            }>Add task...</button>
+                            onClick={() => setShowAddTaskOption(true)}
+                        >Add task...</button>
                     )
                 }
 
             </div>
         </div>
-    )
+    );
 }
 
 export default List;

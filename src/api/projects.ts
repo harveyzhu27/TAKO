@@ -125,7 +125,6 @@ export async function getProjectSummaries(): Promise<ProjectSummary[]> {
     }
 
     const data = (await res.json()) as ProjectSummary[];
-    console.log('Project summaries:', data);
     return data;
   }
 

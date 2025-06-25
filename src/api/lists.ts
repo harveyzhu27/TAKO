@@ -5,7 +5,6 @@ import type { List } from "@shared/models/ListModel";
 
 // Base URL for your backend API
 const API_URL = import.meta.env.VITE_API_URL;
-console.log("API_URL:", import.meta.env.VITE_API_URL);
 
 export async function getIdToken(): Promise<string> {
   const user = getAuth().currentUser;

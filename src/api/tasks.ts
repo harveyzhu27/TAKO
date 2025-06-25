@@ -75,10 +75,7 @@ export async function updateTask(
   taskId: string,
   updates: TaskUpdate
 ): Promise<Task> {
-  console.log("[apiUpdateTask] start, awaiting token");
   const token = await getIdToken();
-  console.log("[apiUpdateTask] got token", token.slice(0,10), "...");
-    console.log("[apiUpdateTask] about to fetch PUT",updates);
   const res = await fetch(
     `${API_URL}/projects/${projectId}/lists/${listId}/tasks/${taskId}`,
     {
@@ -90,11 +87,9 @@ export async function updateTask(
       body: JSON.stringify(updates),
     }
   );
-  console.log("[apiUpdateTask] fetch returned", res.status, res.statusText);
   if (!res.ok) throw new Error(`Failed to update task: ${res.status} ${res.statusText}`);
   
   const data = await res.json();
-   console.log("[apiUpdateTask] parsed JSON", data);
   return data.task;
 }
 

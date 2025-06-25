@@ -30,11 +30,11 @@
 
 .task-name-deadline {
   display: flex;
-  width: 100%;
+  width: 90%;
   justify-content: space-between;
   align-items: center;
   margin: 5px;
-  height: fit-content;
+  height: 25px;
 }
 
 .task-name {
@@ -136,14 +136,25 @@
 
 
 .subtask-input-block {
-  margin-top: 4px;
   display: flex;
   gap: 6px;
+  width: 75%;
 }
 .add-subtask-button {
   background: none;
   color: var(--primary-color);
   border: none;
   cursor: pointer;
-  margin-top: 4px;
+  margin-top: 2px;
+  padding: 1px;
+  width: 20px;
+}
+
+.subtask-name-input{ 
+  min-width: 20px;
+  max-width: fit-content;
+}
+
+.subtask-date-input{
+  width: 30px;
 }

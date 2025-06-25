@@ -23,7 +23,6 @@ export function createTask({
   listId,
   dueDate = null,
   tags = [],
-  isUniversal = false,
   order,
 }: {
   id: string;
@@ -33,7 +32,6 @@ export function createTask({
   listId: string;
   dueDate?: number | null;
   tags?: string[];
-  isUniversal?: boolean;
   order: number;
 }): Task {
   return {
@@ -45,7 +43,7 @@ export function createTask({
     dueDate,
     createdAt: Date.now(),
     completedAt: null,
-    tags: isUniversal ? ['DoNow'] : tags,
+    tags,
     order,
     subtaskCount: 0,
     subtasks: []

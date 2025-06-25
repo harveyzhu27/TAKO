@@ -46,23 +46,25 @@ add-task-block hover{
 }
 .task-input {
     background: none;
+    background-color: #2D6A4F;
     display: flex;
-    border-radius: 8px;
-    margin: 8px;
-    padding: 8px;
-    max-width: 255px;
+    align-items: center;
+    border-radius: 5px;
+    margin: 5px;
+    padding: 4px;
     justify-content: space-between;
-    min-height: 15px;
-    width: 240px;
+    width: 94%;
 }
 
 .add-task-input {
     font-size: 16px;
     background: none;
+    padding-left: 5px;
     border: none;
     display: flex;
-    width: 100%;
+    /* width: 125px; */
     outline: none;
+    height: 35px;
 }
 
 .add-task-deadline-input{
@@ -70,6 +72,7 @@ add-task-block hover{
     background: none;
     max-width: 50px;
     padding: 3px;
+  height: fit-content;
 }
 
 .list-menu-dropdown {

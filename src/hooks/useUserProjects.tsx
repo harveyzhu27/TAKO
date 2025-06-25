@@ -333,8 +333,8 @@ export default function useUserProjects() {
                 ...l,
                 tasks: [
                   ...l.tasks,
-                  { ...newTask, subtasks: [] }       // seed empty subtasks
-                ]
+                  { ...newTask, subtasks: [] }],     // seed empty subtasks
+                  taskCount: (l.taskCount ?? 0) + 1,
               }
               : l
           )
@@ -404,7 +404,8 @@ export default function useUserProjects() {
             l.id === listId
               ? {
                 ...l,
-                tasks: l.tasks.filter(t => t.id !== taskId)
+                tasks: l.tasks.filter(t => t.id !== taskId),
+                taskCount: Math.max((l.taskCount ?? 1) - 1, 0),
               }
               : l
           )
