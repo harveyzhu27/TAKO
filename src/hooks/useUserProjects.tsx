@@ -77,12 +77,10 @@ export default function useUserProjects() {
     }
     setLoading(true);
     setError(null);
-    console.log("Fetching project summaries...");
 
     (async () => {
       try {
         const summaries = await apiGetProjectSummaries();
-        console.log("Loaded summaries:", summaries);
         setProjectSummaries(summaries);
         setCurrentProject(summaries[0]?.id ?? null);
 
@@ -96,13 +94,13 @@ export default function useUserProjects() {
   }, [currentUser, resetAll]);
 
 
-  useEffect(() => { // GETTING AUTH TOKEN FOR DEBUGGING
-    if (currentUser) {
-      currentUser.getIdToken(true).then(token => {
-        console.log("TOKEN:", token);
-      });
-    }
-  }, [currentUser]);
+  // useEffect(() => { // GETTING AUTH TOKEN FOR DEBUGGING
+  //   if (currentUser) {
+  //     currentUser.getIdToken(true).then(token => {
+  //       console.log("TOKEN:", token);
+  //     });
+  //   }
+  // }, [currentUser]);
 
 
   useEffect(() => { // get lists
