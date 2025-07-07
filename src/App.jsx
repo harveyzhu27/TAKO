@@ -13,14 +13,14 @@ import "./App.css";
 
 export default function App() {
   const { currentUser, logOut } = useAuthContext();
-
+  const [toastError, setToastError] = useState(null);
   const {
     projectSummaries,
     currentProject,
     setCurrentProject,
 
     lists,
-    fullProject,           // Project|null, or null if none selected
+    fullProject,
 
     // loading & error
     loading,
@@ -54,8 +54,12 @@ export default function App() {
   const descPopupRef = useRef(null);
 
   useEffect(() => {
-    setDescBuffer(fullProject?.description || "");
-  }, [fullProject]);
+    if (fullProject?.description !== undefined) {
+      setDescBuffer(fullProject.description);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+
+  }, [fullProject?.id]); // ← only when switching projects
 
   // Removed redundant effect that used `projects`
 
@@ -63,7 +67,11 @@ export default function App() {
     const handleClickOutside = (e) => {
       if (descPopupRef.current && !descPopupRef.current.contains(e.target)) {
         if (currentProject) {
-          updateProject(currentProject, { description: descBuffer });
+          const oldDesc = (fullProject?.description ?? "").trim();
+          const newDesc = descBuffer.trim();
+          if (newDesc !== oldDesc) {
+            updateProject(currentProject, { description: newDesc });
+          }
         }
         setShowDescription(false);
       }
@@ -105,7 +113,7 @@ export default function App() {
         <div className="sidebar">
           <div className="project-tab-list">
             <ProjectTabs
-              projects={[...projectSummaries].sort((a, b) => a.order - b.order)} 
+              projects={[...projectSummaries].sort((a, b) => a.order - b.order)}
               currentProject={currentProject}
               setCurrentProject={setCurrentProject}
               addProject={addProject}
@@ -113,6 +121,8 @@ export default function App() {
               updateProject={updateProject}
               forceEditProjectId={forceEditProjectId}
               setForceEditProjectId={setForceEditProjectId}
+              setToastError={setToastError}
+
             />
           </div>
           <div className="user-info">
@@ -148,6 +158,7 @@ export default function App() {
                       listCount={lists.length}
                       isLeftmost={idx === 0}
                       isRightmost={idx === lists.length - 1}
+                      setToastError={setToastError}
                     />
                   </div>
                 ))}
@@ -228,11 +239,26 @@ export default function App() {
                 autoFocus
                 value={descBuffer}
                 onChange={(e) => setDescBuffer(e.target.value)}
+                onBlur={() => {
+                  if (
+                    currentProject &&
+                    descBuffer.trim() !== (fullProject?.description ?? "").trim()
+                  ) {
+                    updateProject(currentProject, { description: descBuffer });
+                  }
+                  setShowDescription(false);
+                }}
               />
             </div>
           )}
         </div>
       </div>
+      {toastError && (
+        <div className="toast-error" onClick={() => setToastError(null)}>
+          {toastError}
+        </div>
+      )}
+
     </div>
   );
 }

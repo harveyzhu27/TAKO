@@ -19,11 +19,11 @@ function List({
     listCount,
     isLeftmost,
     isRightmost,
+    setToastError,
 }) {
     const [newTaskName, setTaskName] = useState("");
     const [newTaskDeadline, setTaskDeadline] = useState("");
     const [showAddTaskOptions, setShowAddTaskOption] = useState(false);
-    const [errorMessage, setErrorMessage] = useState("");
     const [editingName, setEditingName] = useState(false);
     const [nameBuffer, setNameBuffer] = useState(list.name);
     const nameInputRef = useRef(null);
@@ -57,7 +57,7 @@ function List({
                 setShowAddTaskOption(false);
                 setTaskName("");
                 setTaskDeadline("");
-                setErrorMessage("");
+                setToastError("");
             }
         }
 
@@ -79,14 +79,14 @@ function List({
 
     function handleDelete() {
         if (listCount <= 1) {
-            setErrorMessage("You must have at least one other list.");
+            setToastError("You must have at least one other list.");
             return;
         }
         if (
             window.confirm("Are you sure you want to delete this list? This cannot be undone.")
         ) {
             deleteList(projectId, list.id);
-            setErrorMessage("");
+            setToastError("");
         }
     }
 
@@ -98,7 +98,7 @@ function List({
         ) {
             completedTasks.forEach(task => deleteTask(projectId, list.id, task.id));
             setMenuOpen(false);
-            setErrorMessage("");
+            setToastError("");
         }
     }
 
@@ -180,6 +180,7 @@ function List({
                     addSubtask={addSubtask}
                     deleteSubtask={deleteSubtask}
                     updateSubtask={updateSubtask}
+                    setToastError={setToastError}
                 />
                 {
                     showAddTaskOptions ? (
@@ -195,25 +196,25 @@ function List({
                                         e.preventDefault();
                                         const trimmedName = newTaskName.trim();
                                         if (!trimmedName) {
-                                            setErrorMessage("Task name cannot be empty");
+                                            setToastError("Task name cannot be empty");
                                             return;
                                         }
                                         const deadline = newTaskDeadline.trim() === "" ? null : Number(newTaskDeadline);
                                         const success = await addTask(projectId, list.id, trimmedName, deadline);
                                         if (!success) {
-                                            setErrorMessage("Task name already exists");
+                                            setToastError("Task name already exists");
                                             return;
                                         }
                                         setTaskName("");
                                         setTaskDeadline("");
                                         setShowAddTaskOption(false);
-                                        setErrorMessage("");
+                                        setToastError("");
                                     }
                                     if (e.key === 'Escape') {
                                         setTaskName("");
                                         setTaskDeadline("");
                                         setShowAddTaskOption(false);
-                                        setErrorMessage("");
+                                        setToastError("");
                                     }
                                 }}
                             />
@@ -229,30 +230,28 @@ function List({
                                         e.preventDefault();
                                         const trimmedName = newTaskName.trim();
                                         if (!trimmedName) {
-                                            setErrorMessage("Task name cannot be empty");
+                                            setToastError("Task name cannot be empty");
                                             return;
                                         }
                                         const deadline = newTaskDeadline.trim() === "" ? null : Number(newTaskDeadline);
                                         const success = await addTask(projectId, list.id, trimmedName, deadline);
                                         if (!success) {
-                                            setErrorMessage("Task name already exists");
+                                            setToastError("Task name already exists");
+                                            console.log("Toast error triggered!");
                                             return;
                                         }
                                         setTaskName("");
                                         setTaskDeadline("");
                                         setShowAddTaskOption(false);
-                                        setErrorMessage("");
+                                        setToastError("");
                                     }
                                     if (e.key === 'Escape') {
                                         setNewTaskDeadline("");
                                         setShowAddTaskOption(false);
-                                        setErrorMessage("");
+                                        setToastError("");
                                     }
                                 }}
                             />
-                            {errorMessage && (
-                                <div className='error-message'>{errorMessage}</div>
-                            )}
                         </div>
 
                     ) : (

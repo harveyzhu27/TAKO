@@ -185,14 +185,17 @@ function TaskList({
             ) : (
               <>
                 <span
-                  className={`task-name ${task.completedAt ? 'done-task' : ''}`}
+                  className={`task-name ${task.completedAt ? "done-task" : ""}`}
                   onClick={() => {
                     setEditingTaskId(task.id);
                     setEditName(task.name);
                     setEditDeadline(task.dueDate ?? '');
                   }}
                 >
-                  {task.name} ({task.subtasks?.length ?? 0})
+                  {task.name}
+                  {task.subtaskCount > 0 && (
+                    <span className="subtask-count"> ({task.subtaskCount})</span>
+                  )}
                 </span>
                 {task.dueDate ? (
                   <span className="task-deadline">
@@ -240,7 +243,7 @@ function TaskList({
         </div>
 
         {/* Show subtasks */}
-        {!isCollapsed && (task.subtasks ?? []).length > 0 && (
+        {!isCollapsed && task.subtaskCount > 0 && task.subtasks?.length > 0 && (
           <div className="subtask-wrapper">
             <SubtaskList
               projectId={projectId}

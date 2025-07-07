@@ -6,6 +6,7 @@ import type { List } from "@shared/models/ListModel";
 import type { Task, TaskUpdate } from "@shared/models/TaskModel";
 import type { Subtask, SubtaskUpdate } from "@shared/models/SubtaskModel";
 import { getIdToken } from "firebase/auth";
+
 import {
   getAllProjects as apiGetAllProjects,
   createProject as apiCreateProject,
@@ -83,7 +84,6 @@ export default function useUserProjects() {
         const summaries = await apiGetProjectSummaries();
         setProjectSummaries(summaries);
         setCurrentProject(summaries[0]?.id ?? null);
-
       } catch (err: unknown) {
         console.error("🔴 getProjectSummaries failed:", (err as Error).message);
       } finally {
@@ -127,7 +127,7 @@ export default function useUserProjects() {
                 return { ...t, subtasks: sts };
               })
             );
-            return { ...l, tasks: tasksWithSubs };
+            return { ...l, tasks: tasksWithSubs, taskCount: tasksWithSubs.length};
           })
         );
         setProjectData(prev => ({ ...prev, [currentProject]: listsWithTasks }));
@@ -265,7 +265,11 @@ export default function useUserProjects() {
         updateProjectData(projectId, lists =>
           (lists ?? []).map(l =>
             l.id === listId
-              ? { ...updated, tasks: l.tasks }
+              ? {
+    ...l,
+    name: updated.name,
+    order: updated.order ?? l.order,
+  }
               : l
           )
         );
@@ -281,38 +285,45 @@ export default function useUserProjects() {
   );
 
   // MOVE a list left or right
-  const moveList = useCallback(
-    async (projectId: string, listId: string, direction: "left" | "right") => {
-      setLoading(true);
-      setError(null);
-      try {
-        const lists = projectData[projectId] ?? [];
-        const idx = lists.findIndex(l => l.id === listId);
-        const swapIdx = direction === "left" ? idx - 1 : idx + 1;
-        if (idx < 0 || swapIdx < 0 || swapIdx >= lists.length) return;
+const moveList = useCallback(
+  async (projectId: string, listId: string, direction: "left" | "right") => {
+    setLoading(true);
+    setError(null);
+    try {
+      const lists = projectData[projectId] ?? [];
+      const idx = lists.findIndex(l => l.id === listId);
+      const swapIdx = direction === "left" ? idx - 1 : idx + 1;
+      if (idx < 0 || swapIdx < 0 || swapIdx >= lists.length) return;
 
-        const a = lists[idx], b = lists[swapIdx];
-        // swap orders on the server
-        await apiUpdateList(projectId, a.id, a.name, b.order);
-        await apiUpdateList(projectId, b.id, b.name, a.order);
+      const a = lists[idx], b = lists[swapIdx];
 
-        // re-fetch and preserve tasks
-        const updatedLists = await apiGetLists(projectId);
-        updateProjectData(projectId, old =>
-          updatedLists.map(l => ({
+
+      // swap orders
+    await Promise.all([
+      apiUpdateList(projectId, a.id, a.name, b.order),
+      apiUpdateList(projectId, b.id, b.name, a.order),
+    ]);
+
+      const updatedLists = await apiGetLists(projectId);
+
+      updateProjectData(projectId, old =>
+        updatedLists
+          .sort((a, b) => a.order - b.order)
+          .map(l => ({
             ...l,
             tasks: old.find(orig => orig.id === l.id)?.tasks ?? []
           }))
-        );
-      } catch (e: any) {
-        setError(e.message ?? "Unable to move list");
-        throw e;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [projectData, updateProjectData]
-  );
+      );
+    } catch (e: any) {
+      setError(e.message ?? "Unable to move list");
+      throw e;
+    } finally {
+      setLoading(false);
+    }
+  },
+  [projectData, updateProjectData]
+);
+
 
   // ADD a task
   const addTask = useCallback(
@@ -333,7 +344,7 @@ export default function useUserProjects() {
                 ...l,
                 tasks: [
                   ...l.tasks,
-                  { ...newTask, subtasks: [] }],     // seed empty subtasks
+                  { ...newTask, subtasks: [] }],
                   taskCount: (l.taskCount ?? 0) + 1,
               }
               : l
@@ -342,7 +353,7 @@ export default function useUserProjects() {
         return newTask;
       } catch (e: any) {
         setError(e.message ?? "Unable to create task");
-        throw e;
+        // throw e;
       } finally {
         setLoading(false);
       }

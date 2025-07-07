@@ -74,23 +74,18 @@ export const getAllProjectsController = async (req: Request, res: Response) => {
 }
 
 export const getProjectSummariesController = async (req: Request, res: Response) => {
-  console.log("📦 getProjectSummariesController called");
-  console.log(`→ GET ${req.method} ${req.originalUrl} headers:`, req.headers);
   try {
-    console.log('↪ req.user:', (req as any).user);
     const uid = (req as any).user.uid
     
     const snapshot = await db.collection('projects')
       .where('uid', '==', uid)
       .select('name', 'order')
       .get();
-      console.log(`🔍 Found ${snapshot.size} project(s) for uid=${uid}`);
     const summaries = snapshot.docs.map(doc => ({
       id: doc.id,
       name: doc.data().name,
       order: doc.data().order ?? 0,
     }));
-     console.log('📦 Sending summaries:', summaries);
     return res.json(summaries);
   } catch (err) {
     console.error('Error fetching project summaries', err);
@@ -175,11 +170,6 @@ export const updateProjectController = async (req: Request, res: Response) => {
         const neighborRef = neighborDoc.ref;
         const neighborOrder = neighborDoc.data().order;
 
-        // Log orders before swap
-        console.log('🔄 Before swap:', [
-          { id: projectRef.id, order: currentOrder },
-          { id: neighborRef.id, order: neighborOrder }
-        ]);
 
         // Swap in one batch
         const batch: WriteBatch = db.batch();

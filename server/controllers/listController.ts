@@ -4,23 +4,21 @@ import { getNewListId, validateName } from '../utils/utils';
 import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-admin/firestore';
 import { createList } from '../../shared/models/ListModel';
 
-let currentListOrder = 0;
 
 // Create a new list under a project
 export const createListController = async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user.uid;
     const { projectid } = req.params;
-
+    const name = validateName(req.body.name);
     const projectRef = db.collection('projects').doc(projectid);
     const projectSnap = await projectRef.get();
-    if (!projectSnap.exists) 
+    if (!projectSnap.exists)
       return res.status(404).json({ error: 'Project not found' });
-    if (projectSnap.data()?.uid !== uid) 
+    if (projectSnap.data()?.uid !== uid)
       return res.status(403).json({ error: 'Forbidden' });
 
-    const name = validateName(req.body.name);
-    if (!name) 
+    if (!name)
       return res.status(400).json({ error: 'Invalid list name' });
 
     // Ensure unique within the project
@@ -28,8 +26,18 @@ export const createListController = async (req: Request, res: Response) => {
       .collection('lists')
       .where('name', '==', name)
       .get();
-    if (!dupSnap.empty) 
+    if (!dupSnap.empty)
       return res.status(400).json({ error: 'Duplicate list name' });
+
+    const existingListsSnap = await projectRef.collection('lists').get();
+    let maxOrder = -1;
+    existingListsSnap.forEach(doc => {
+      const listData = doc.data();
+      if (typeof listData.order === 'number') {
+        maxOrder = Math.max(maxOrder, listData.order);
+      }
+    });
+    const order = maxOrder + 1;
 
     const listId = getNewListId();
     const list = createList({
@@ -37,7 +45,7 @@ export const createListController = async (req: Request, res: Response) => {
       uid,
       name,
       projectId: projectid,
-      order: currentListOrder++,
+      order,
     });
 
     await projectRef.collection('lists').doc(listId).set(list);
@@ -56,9 +64,9 @@ export const getListsController = async (req: Request, res: Response) => {
 
     const projectRef = db.collection('projects').doc(projectid);
     const projectSnap = await projectRef.get();
-    if (!projectSnap.exists) 
+    if (!projectSnap.exists)
       return res.status(404).json({ error: 'Project not found' });
-    if (projectSnap.data()?.uid !== uid) 
+    if (projectSnap.data()?.uid !== uid)
       return res.status(403).json({ error: 'Forbidden' });
 
     const listsSnap = await projectRef.collection('lists').get();
@@ -78,14 +86,14 @@ export const getListController = async (req: Request, res: Response) => {
 
     const projectRef = db.collection('projects').doc(projectid);
     const projectSnap = await projectRef.get();
-    if (!projectSnap.exists) 
+    if (!projectSnap.exists)
       return res.status(404).json({ error: 'Project not found' });
-    if (projectSnap.data()?.uid !== uid) 
+    if (projectSnap.data()?.uid !== uid)
       return res.status(403).json({ error: 'Forbidden' });
 
     const listRef = projectRef.collection('lists').doc(listid);
     const listSnap = await listRef.get();
-    if (!listSnap.exists) 
+    if (!listSnap.exists)
       return res.status(404).json({ error: 'List not found' });
 
     res.status(200).json({ list: listSnap.data()! });
@@ -148,20 +156,20 @@ export const deleteListController = async (req: Request, res: Response) => {
 
     const projectRef = db.collection('projects').doc(projectid);
     const projectSnap = await projectRef.get();
-    if (!projectSnap.exists) 
+    if (!projectSnap.exists)
       return res.status(404).json({ error: 'Project not found' });
-    if (projectSnap.data()?.uid !== uid) 
+    if (projectSnap.data()?.uid !== uid)
       return res.status(403).json({ error: 'Forbidden' });
 
     const listRef = projectRef.collection('lists').doc(listid);
     const listSnap = await listRef.get();
-    if (!listSnap.exists) 
+    if (!listSnap.exists)
       return res.status(404).json({ error: 'List not found' });
     // Must leave at least one non-universal list
     const otherLists = await projectRef
       .collection('lists')
       .get();
-    if (otherLists.size <= 1) 
+    if (otherLists.size <= 1)
       return res.status(400).json({ error: 'Must have at least one other list' });
 
     await listRef.delete();

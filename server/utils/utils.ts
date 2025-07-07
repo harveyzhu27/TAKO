@@ -36,3 +36,20 @@ export function validateName(name: unknown): string | null {
   if (!trimmed || /^\d+$/.test(trimmed)) return null
   return trimmed
 }
+
+
+import { db } from '../firebase';
+
+export async function recalculateTaskCount(projectId: string, listId: string) {
+  const tasksSnap = await db
+    .collection('projects').doc(projectId)
+    .collection('lists').doc(listId)
+    .collection('tasks')
+    .where('completedAt', '==', null)
+    .get();
+  const incompleteCount = tasksSnap.size;
+  await db
+    .collection('projects').doc(projectId)
+    .collection('lists').doc(listId)
+    .update({ taskCount: incompleteCount });
+}

@@ -21,6 +21,7 @@ export const createTaskController = async (req: Request, res: Response) => {
     const listSnap = await listRef.get();
     if (!listSnap.exists)
       return res.status(404).json({ error: 'List not found' });
+    
 
     const name = validateName(req.body.name);
     if (!name)

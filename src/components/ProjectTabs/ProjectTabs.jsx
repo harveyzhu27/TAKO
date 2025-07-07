@@ -10,10 +10,10 @@ function ProjectTabs({
   updateProject,
   forceEditProjectId,
   setForceEditProjectId,
+  setToastError
 }) {
   const [newProjectName, setProjectName] = useState("");
   const [showAddOptions, setShowAddOption] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const [showHomeScreen, setShowHomeScreen] = useState(false);
   const [editNameBuffer, setEditNameBuffer] = useState("");
   const inputRef = useRef(null);
@@ -92,21 +92,20 @@ function ProjectTabs({
               if (e.key === 'Enter') {
                 const success = await addProject(newProjectName.trim());
                 if (!success) {
-                  setErrorMessage('Project name already exists');
+                  setToastError('Project name already exists');
                   return;
                 }
                 setProjectName("");
                 setShowAddOption(false);
-                setErrorMessage("");
+                setToastError("");
               }
               if (e.key === 'Escape') {
                 setProjectName("");
                 setShowAddOption(false);
-                setErrorMessage("");
+                setToastError("");
               }
             }}
           />
-          {errorMessage && <div className='error-message'>{errorMessage}</div>}
         </div>
       ) : (
         <button
