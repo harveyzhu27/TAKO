@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { db } from '../firebase'
-import { getNewProjId, getNewListId, validateName } from '../utils/utils'
+import { getNewProjId, getNewListId, validateName, recalculateProjectTaskCount } from '../utils/utils'
 import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-admin/firestore'
 import { createProject } from "../../shared/models/ProjectModel";
 import { createList } from "../../shared/models/ListModel"
@@ -50,6 +50,10 @@ export const createProjectController = async (req: Request, res: Response) => {
 
 
     await batch.commit()
+    
+    // Ensure project taskCount is initialized correctly
+    await recalculateProjectTaskCount(projId);
+    
     res.status(201).json({ project, list })
   } catch (err) {
     console.error(err)
@@ -79,12 +83,13 @@ export const getProjectSummariesController = async (req: Request, res: Response)
     
     const snapshot = await db.collection('projects')
       .where('uid', '==', uid)
-      .select('name', 'order')
+      .select('name', 'order', 'taskCount')
       .get();
     const summaries = snapshot.docs.map(doc => ({
       id: doc.id,
       name: doc.data().name,
       order: doc.data().order ?? 0,
+      taskCount: doc.data().taskCount ?? 0,
     }));
     return res.json(summaries);
   } catch (err) {

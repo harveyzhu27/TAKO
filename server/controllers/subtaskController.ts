@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../firebase';
-import { getNewSubtaskId, validateName } from '../utils/utils';
+import { getNewSubtaskId, validateName, recalculateTaskCount, recalculateProjectTaskCount } from '../utils/utils';
 import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-admin/firestore';
 import { createSubtask } from '../../shared/models/SubtaskModel';
 
@@ -40,6 +40,11 @@ export const createSubtaskController = async (req: Request, res: Response) => {
     });
 
     await taskRef.collection('subtasks').doc(subtaskId).set(subtask);
+    
+    // Update taskCount for list and project (subtasks might affect task completion)
+    await recalculateTaskCount(projectid, listid);
+    await recalculateProjectTaskCount(projectid);
+    
     res.status(201).json({ subtask });
   } catch (err) {
     console.error(err);
@@ -148,6 +153,11 @@ export const deleteSubtaskController = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Subtask not found or forbidden' });
 
     await subRef.delete();
+    
+    // Update taskCount for list and project (subtasks might affect task completion)
+    await recalculateTaskCount(projectid, listid);
+    await recalculateProjectTaskCount(projectid);
+    
     res.status(200).json({ message: 'Subtask deleted' });
   } catch (err) {
     console.error(err);

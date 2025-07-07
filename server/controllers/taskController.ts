@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../firebase';
-import { getNewTaskId, validateName } from '../utils/utils';
+import { getNewTaskId, validateName, recalculateTaskCount, recalculateProjectTaskCount } from '../utils/utils';
 import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-admin/firestore';
 import { createTask } from '../../shared/models/TaskModel';
 
@@ -44,6 +44,11 @@ export const createTaskController = async (req: Request, res: Response) => {
     });
 
     await listRef.collection('tasks').doc(taskId).set(task);
+    
+    // Update taskCount for list and project
+    await recalculateTaskCount(projectid, listid);
+    await recalculateProjectTaskCount(projectid);
+    
     res.status(201).json({ task });
   } catch (err) {
     console.error(err);
@@ -127,6 +132,13 @@ export const updateTaskController = async (req: Request, res: Response) => {
     }
 
     await taskRef.update(updates);
+    
+    // Update taskCount if completion status changed
+    if (req.body.completedAt !== undefined) {
+      await recalculateTaskCount(projectid, listid);
+      await recalculateProjectTaskCount(projectid);
+    }
+    
     const updatedSnap = await taskRef.get();
     const updatedTask = updatedSnap.data();
     return res.status(200).json({ task: updatedTask });
@@ -157,6 +169,10 @@ export const deleteTaskController = async (req: Request, res: Response) => {
     subsSnap.docs.forEach(sd => batch.delete(sd.ref));
     batch.delete(taskRef);
     await batch.commit();
+
+    // Update taskCount for list and project
+    await recalculateTaskCount(projectid, listid);
+    await recalculateProjectTaskCount(projectid);
 
     res.status(200).json({ message: 'Task deleted' });
   } catch (err) {

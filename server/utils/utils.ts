@@ -53,3 +53,56 @@ export async function recalculateTaskCount(projectId: string, listId: string) {
     .collection('lists').doc(listId)
     .update({ taskCount: incompleteCount });
 }
+
+export async function recalculateProjectTaskCount(projectId: string) {
+  const listsSnap = await db
+    .collection('projects').doc(projectId)
+    .collection('lists')
+    .get();
+  
+  let totalTaskCount = 0;
+  for (const listDoc of listsSnap.docs) {
+    const tasksSnap = await listDoc.ref
+      .collection('tasks')
+      .where('completedAt', '==', null)
+      .get();
+    totalTaskCount += tasksSnap.size;
+  }
+  
+  await db
+    .collection('projects').doc(projectId)
+    .update({ taskCount: totalTaskCount });
+}
+
+export async function migrateTaskCounts() {
+  console.log('Starting taskCount migration...');
+  
+  try {
+    // Get all projects
+    const projectsSnap = await db.collection('projects').get();
+    
+    for (const projectDoc of projectsSnap.docs) {
+      const projectId = projectDoc.id;
+      console.log(`Processing project: ${projectId}`);
+      
+      // Get all lists in this project
+      const listsSnap = await projectDoc.ref.collection('lists').get();
+      
+      for (const listDoc of listsSnap.docs) {
+        const listId = listDoc.id;
+        console.log(`  Processing list: ${listId}`);
+        
+        // Recalculate taskCount for this list
+        await recalculateTaskCount(projectId, listId);
+      }
+      
+      // Recalculate project taskCount
+      await recalculateProjectTaskCount(projectId);
+    }
+    
+    console.log('TaskCount migration completed successfully!');
+  } catch (error) {
+    console.error('Error during taskCount migration:', error);
+    throw error;
+  }
+}

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { db } from '../firebase';
-import { getNewListId, validateName } from '../utils/utils';
+import { getNewListId, validateName, recalculateProjectTaskCount } from '../utils/utils';
 import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-admin/firestore';
 import { createList } from '../../shared/models/ListModel';
 
@@ -49,6 +49,10 @@ export const createListController = async (req: Request, res: Response) => {
     });
 
     await projectRef.collection('lists').doc(listId).set(list);
+    
+    // Update project taskCount (new list with 0 tasks)
+    await recalculateProjectTaskCount(projectid);
+    
     res.status(201).json({ list });
   } catch (err) {
     console.error(err);
@@ -71,7 +75,14 @@ export const getListsController = async (req: Request, res: Response) => {
 
     const listsSnap = await projectRef.collection('lists').get();
     const lists = listsSnap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data());
-    res.status(200).json({ lists });
+    
+    // Ensure taskCount is included in response
+    const listsWithTaskCount = lists.map(list => ({
+      ...list,
+      taskCount: list.taskCount ?? 0
+    }));
+    
+    res.status(200).json({ lists: listsWithTaskCount });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -173,6 +184,10 @@ export const deleteListController = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Must have at least one other list' });
 
     await listRef.delete();
+    
+    // Update project taskCount (list and its tasks are deleted)
+    await recalculateProjectTaskCount(projectid);
+    
     res.status(200).json({ message: 'List deleted' });
   } catch (err) {
     console.error(err);

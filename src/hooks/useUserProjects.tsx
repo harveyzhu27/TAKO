@@ -42,6 +42,7 @@ export default function useUserProjects() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+
   const lists = currentProject
     ? projectData[currentProject] ?? []
     : [];
@@ -117,19 +118,38 @@ export default function useUserProjects() {
 
     (async () => {
       try {
+        console.log("🚀 Loading project data for:", currentProject);
+        
+        // Load lists first
         const rawLists = await apiGetLists(currentProject);
+        console.log("📋 Loaded", rawLists.length, "lists");
+        
+        // Load all tasks and subtasks in parallel for better performance
         const listsWithTasks = await Promise.all(
           rawLists.map(async (l) => {
-            const ts = await apiGetTasks(currentProject, l.id);
-            const tasksWithSubs = await Promise.all(
-              ts.map(async (t) => {
-                const sts = await apiGetSubtasks(currentProject, l.id, t.id);
-                return { ...t, subtasks: sts };
+            console.log("📥 Loading tasks for list:", l.name);
+            
+            // Load tasks for this list
+            const tasks = await apiGetTasks(currentProject, l.id);
+            
+            // Load subtasks for all tasks in parallel
+            const tasksWithSubtasks = await Promise.all(
+              tasks.map(async (task) => {
+                const subtasks = await apiGetSubtasks(currentProject, l.id, task.id);
+                return { ...task, subtasks };
               })
             );
-            return { ...l, tasks: tasksWithSubs, taskCount: tasksWithSubs.length};
+            
+            console.log("✅ Loaded", tasksWithSubtasks.length, "tasks for list:", l.name);
+            return { 
+              ...l, 
+              tasks: tasksWithSubtasks, 
+              taskCount: l.taskCount ?? tasksWithSubtasks.length
+            };
           })
         );
+        
+        console.log("🎉 Finished loading all project data");
         setProjectData(prev => ({ ...prev, [currentProject]: listsWithTasks }));
       } catch (e: any) {
         setError(e.message ?? "Failed to load project data");
@@ -217,6 +237,47 @@ export default function useUserProjects() {
     }
   }, []);
 
+  const refreshProjectSummaries = useCallback(async () => {
+    try {
+      const summaries = await apiGetProjectSummaries();
+      setProjectSummaries(summaries);
+    } catch (err: unknown) {
+      console.error("🔴 refreshProjectSummaries failed:", (err as Error).message);
+    }
+  }, []);
+
+  const refreshCurrentProjectData = useCallback(async () => {
+    if (!currentProject) return;
+    
+    console.log("🔄 Refreshing current project data for:", currentProject);
+    
+    try {
+      const rawLists = await apiGetLists(currentProject);
+      console.log("📋 Raw lists from API:", rawLists.map(l => ({ id: l.id, name: l.name, taskCount: l.taskCount })));
+      
+      const listsWithTasks = await Promise.all(
+        rawLists.map(async (l) => {
+          const ts = await apiGetTasks(currentProject, l.id);
+          const tasksWithSubs = await Promise.all(
+            ts.map(async (t) => {
+              const sts = await apiGetSubtasks(currentProject, l.id, t.id);
+              return { ...t, subtasks: sts };
+            })
+          );
+          return { ...l, tasks: tasksWithSubs, taskCount: l.taskCount ?? tasksWithSubs.length};
+        })
+      );
+      
+      console.log("📊 Lists with tasks:", listsWithTasks.map(l => ({ id: l.id, name: l.name, taskCount: l.taskCount, taskCountFromTasks: l.tasks.length })));
+      
+      setProjectData(prev => ({ ...prev, [currentProject]: listsWithTasks }));
+    } catch (err: unknown) {
+      console.error("🔴 refreshCurrentProjectData failed:", (err as Error).message);
+    }
+  }, [currentProject, apiGetLists, apiGetTasks, apiGetSubtasks]);
+
+
+
 
   // Lists CRUD
   const addList = useCallback(async (projectId: string, name: string) => {
@@ -228,6 +289,10 @@ export default function useUserProjects() {
         ...lists,
         { ...newList, tasks: [] }
       ]);
+      
+      // Refresh project summaries to update project taskCount
+      await refreshProjectSummaries();
+      
       return newList;
     } catch (e: any) {
       setError(e.message ?? "Unable to create list");
@@ -235,7 +300,7 @@ export default function useUserProjects() {
     } finally {
       setLoading(false);
     }
-  }, [updateProjectData]);
+  }, [updateProjectData, refreshProjectSummaries]);
 
   const deleteList = useCallback(
     async (projectId: string, listId: string) => {
@@ -246,6 +311,9 @@ export default function useUserProjects() {
         updateProjectData(projectId, lists =>
           (lists ?? []).filter(l => l.id !== listId)
         );
+        
+        // Refresh project summaries to update project taskCount
+        await refreshProjectSummaries();
       } catch (e: any) {
         setError(e.message ?? "Unable to delete list");
         throw e;
@@ -253,7 +321,7 @@ export default function useUserProjects() {
         setLoading(false);
       }
     },
-    [updateProjectData]
+    [updateProjectData, refreshProjectSummaries]
   );
 
   const updateList = useCallback(
@@ -345,11 +413,15 @@ const moveList = useCallback(
                 tasks: [
                   ...l.tasks,
                   { ...newTask, subtasks: [] }],
-                  taskCount: (l.taskCount ?? 0) + 1,
               }
               : l
           )
         );
+        
+        // Refresh current project data to update list taskCount
+        console.log("🔄 addTask: Calling refreshCurrentProjectData");
+        await refreshCurrentProjectData();
+        
         return newTask;
       } catch (e: any) {
         setError(e.message ?? "Unable to create task");
@@ -358,7 +430,7 @@ const moveList = useCallback(
         setLoading(false);
       }
     },
-    [updateProjectData]
+    [updateProjectData, refreshCurrentProjectData]
   );
 
   // UPDATE a task
@@ -392,6 +464,12 @@ const moveList = useCallback(
               : l
           )
         );
+        
+        // Refresh current project data if completion status changed
+        if (updates.completedAt !== undefined) {
+          await refreshCurrentProjectData();
+        }
+        
         return updated;
       } catch (e: any) {
         setError(e.message ?? "Unable to update task");
@@ -400,7 +478,7 @@ const moveList = useCallback(
         setLoading(false);
       }
     },
-    [updateProjectData]
+    [updateProjectData, refreshCurrentProjectData]
   );
 
   // DELETE a task
@@ -416,11 +494,14 @@ const moveList = useCallback(
               ? {
                 ...l,
                 tasks: l.tasks.filter(t => t.id !== taskId),
-                taskCount: Math.max((l.taskCount ?? 1) - 1, 0),
               }
               : l
           )
         );
+        
+        // Refresh current project data to update list taskCount
+        console.log("🔄 deleteTask: Calling refreshCurrentProjectData");
+        await refreshCurrentProjectData();
       } catch (e: any) {
         setError(e.message ?? "Unable to delete task");
         throw e;
@@ -428,7 +509,7 @@ const moveList = useCallback(
         setLoading(false);
       }
     },
-    [updateProjectData]
+    [updateProjectData, refreshCurrentProjectData]
   );
 
   // ADD a subtask
@@ -467,6 +548,10 @@ const moveList = useCallback(
               : l
           )
         );
+        
+        // Refresh current project data (subtasks might affect task completion)
+        await refreshCurrentProjectData();
+        
         return newSubtask;
       } catch (e: any) {
         setError(e.message ?? "Unable to add subtask");
@@ -475,7 +560,7 @@ const moveList = useCallback(
         setLoading(false);
       }
     },
-    [updateProjectData]
+    [updateProjectData, refreshCurrentProjectData]
   );
 
   // UPDATE a subtask
@@ -524,7 +609,7 @@ const moveList = useCallback(
         setLoading(false);
       }
     },
-    [updateProjectData]
+    [updateProjectData, refreshCurrentProjectData]
   );
 
   // DELETE a subtask
@@ -556,6 +641,9 @@ const moveList = useCallback(
               : l
           )
         );
+        
+        // Refresh current project data (subtasks might affect task completion)
+        await refreshCurrentProjectData();
       } catch (e: any) {
         setError(e.message ?? "Unable to delete subtask");
         throw e;
@@ -563,7 +651,7 @@ const moveList = useCallback(
         setLoading(false);
       }
     },
-    [updateProjectData]
+    [updateProjectData, refreshCurrentProjectData]
   );
 
   return {
@@ -584,6 +672,9 @@ const moveList = useCallback(
     addProject,
     updateProject,
     deleteProject,
+    refreshProjectSummaries,
+    refreshCurrentProjectData,
+
 
     // list‐level actions
     addList,
