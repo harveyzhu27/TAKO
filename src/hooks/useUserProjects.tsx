@@ -42,6 +42,11 @@ export default function useUserProjects() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Add a refreshKey for manual/triggered refreshes
+  const [refreshKey, setRefreshKey] = useState(0);
+  // Function to force a full refresh from backend
+  const forceRefresh = useCallback(() => setRefreshKey(k => k + 1), []);
+
 
   const lists = currentProject
     ? projectData[currentProject] ?? []
@@ -104,52 +109,32 @@ export default function useUserProjects() {
   // }, [currentUser]);
 
 
-  useEffect(() => { // get lists
-    if (!currentProject) {
-      console.log("Current project is null");
-      return;
-    }
-    if (projectData[currentProject]) {
-      console.log("List for current project has already been rendered");
-      return;
-    }
+  // Optimized: Only fetch from backend on initial load or when forced
+  useEffect(() => {
+    if (!currentProject) return;
     setLoading(true);
     setError(null);
 
     (async () => {
       try {
-        console.log("🚀 Loading project data for:", currentProject);
-        
-        // Load lists first
+        // Fetch all lists, tasks, and subtasks for the current project
         const rawLists = await apiGetLists(currentProject);
-        console.log("📋 Loaded", rawLists.length, "lists");
-        
-        // Load all tasks and subtasks in parallel for better performance
         const listsWithTasks = await Promise.all(
           rawLists.map(async (l) => {
-            console.log("📥 Loading tasks for list:", l.name);
-            
-            // Load tasks for this list
             const tasks = await apiGetTasks(currentProject, l.id);
-            
-            // Load subtasks for all tasks in parallel
             const tasksWithSubtasks = await Promise.all(
               tasks.map(async (task) => {
                 const subtasks = await apiGetSubtasks(currentProject, l.id, task.id);
                 return { ...task, subtasks };
               })
             );
-            
-            console.log("✅ Loaded", tasksWithSubtasks.length, "tasks for list:", l.name);
-            return { 
-              ...l, 
-              tasks: tasksWithSubtasks, 
+            return {
+              ...l,
+              tasks: tasksWithSubtasks,
               taskCount: l.taskCount ?? tasksWithSubtasks.length
             };
           })
         );
-        
-        console.log("🎉 Finished loading all project data");
         setProjectData(prev => ({ ...prev, [currentProject]: listsWithTasks }));
       } catch (e: any) {
         setError(e.message ?? "Failed to load project data");
@@ -157,7 +142,7 @@ export default function useUserProjects() {
         setLoading(false);
       }
     })();
-  }, [currentProject]);
+  }, [currentProject, refreshKey]);
 
   // Projects CRUD
   const addProject = useCallback(async (name: string) => {
@@ -280,6 +265,7 @@ export default function useUserProjects() {
 
 
   // Lists CRUD
+  // Efficiently update local state after list changes
   const addList = useCallback(async (projectId: string, name: string) => {
     setLoading(true);
     setError(null);
@@ -289,10 +275,7 @@ export default function useUserProjects() {
         ...lists,
         { ...newList, tasks: [] }
       ]);
-      
-      // Refresh project summaries to update project taskCount
       await refreshProjectSummaries();
-      
       return newList;
     } catch (e: any) {
       setError(e.message ?? "Unable to create list");
@@ -311,8 +294,6 @@ export default function useUserProjects() {
         updateProjectData(projectId, lists =>
           (lists ?? []).filter(l => l.id !== listId)
         );
-        
-        // Refresh project summaries to update project taskCount
         await refreshProjectSummaries();
       } catch (e: any) {
         setError(e.message ?? "Unable to delete list");
@@ -514,54 +495,35 @@ const moveList = useCallback(
 
   // ADD a subtask
   const addSubtask = useCallback(
-    async (
-      projectId: string,
-      listId: string,
-      taskId: string,
-      name: string,
-      dueDate?: number
-    ) => {
-      setLoading(true);
-      setError(null);
+    async (projectId: string, listId: string, taskId: string, name: string, dueDate?: number) => {
       try {
-        const newSubtask = await apiCreateSubtask(
-          projectId,
-          listId,
-          taskId,
-          name,
-          dueDate
-        );
-        updateProjectData(projectId, lists =>
-          lists.map(l =>
-            l.id === listId
-              ? {
-                ...l,
-                tasks: l.tasks.map(t =>
-                  t.id === taskId
-                    ? {
-                      ...t,
-                      subtasks: [...(t.subtasks ?? []), newSubtask]
-                    }
-                    : t
-                )
-              }
-              : l
-          )
-        );
-        
-        // Refresh current project data (subtasks might affect task completion)
-        await refreshCurrentProjectData();
-        
-        return newSubtask;
-      } catch (e: any) {
-        setError(e.message ?? "Unable to add subtask");
-        throw e;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [updateProjectData, refreshCurrentProjectData]
-  );
+        const newSubtask = await apiCreateSubtask(projectId, listId, taskId, name, dueDate);
+        updateProjectData(projectId, (lists) =>
+          lists.map((list) =>
+            list.id !== listId
+              ? list
+              : {
+                  ...list,
+                  tasks: list.tasks.map((task) =>
+                    task.id !== taskId
+                      ? task
+                      : {
+                          ...task,
+                          subtasks: [...(task.subtasks || []), newSubtask],
+                          subtaskCount: (task.subtaskCount || 0) + 1,
+                        }
+                  ),
+                }
+        )
+      );
+      return true;
+    } catch (e: any) {
+      setError(e.message ?? "Unable to create subtask");
+      return false;
+    }
+  },
+  [updateProjectData]
+);
 
   // UPDATE a subtask
   const updateSubtask = useCallback(
@@ -572,87 +534,67 @@ const moveList = useCallback(
       subtaskId: string,
       updates: SubtaskUpdate
     ) => {
-      setLoading(true);
-      setError(null);
       try {
-        const updatedSubtask = await apiUpdateSubtask(
-          projectId,
-          listId,
-          taskId,
-          subtaskId,
-          updates
-        );
-        updateProjectData(projectId, lists =>
-          lists.map(l =>
-            l.id === listId
-              ? {
-                ...l,
-                tasks: l.tasks.map(t =>
-                  t.id === taskId
-                    ? {
-                      ...t,
-                      subtasks: t.subtasks.map(s =>
-                        s.id === subtaskId ? updatedSubtask : s
-                      )
-                    }
-                    : t
-                )
-              }
-              : l
-          )
-        );
-        return updatedSubtask;
-      } catch (e: any) {
-        setError(e.message ?? "Unable to update subtask");
-        throw e;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [updateProjectData, refreshCurrentProjectData]
-  );
+        const updatedSubtask = await apiUpdateSubtask(projectId, listId, taskId, subtaskId, updates);
+        updateProjectData(projectId, (lists) =>
+          lists.map((list) =>
+            list.id !== listId
+              ? list
+              : {
+                  ...list,
+                  tasks: list.tasks.map((task) =>
+                    task.id !== taskId
+                      ? task
+                      : {
+                          ...task,
+                          subtasks: (task.subtasks || []).map((subtask) =>
+                            subtask.id !== subtaskId ? subtask : updatedSubtask
+                          ),
+                        }
+                  ),
+                }
+        )
+      );
+      return true;
+    } catch (e: any) {
+      setError(e.message ?? "Unable to update subtask");
+      return false;
+    }
+  },
+  [updateProjectData]
+);
 
   // DELETE a subtask
   const deleteSubtask = useCallback(
-    async (
-      projectId: string,
-      listId: string,
-      taskId: string,
-      subtaskId: string
-    ) => {
-      setLoading(true);
-      setError(null);
+    async (projectId: string, listId: string, taskId: string, subtaskId: string) => {
       try {
         await apiDeleteSubtask(projectId, listId, taskId, subtaskId);
-        updateProjectData(projectId, lists =>
-          lists.map(l =>
-            l.id === listId
-              ? {
-                ...l,
-                tasks: l.tasks.map(t =>
-                  t.id === taskId
-                    ? {
-                      ...t,
-                      subtasks: t.subtasks.filter(s => s.id !== subtaskId)
-                    }
-                    : t
-                )
-              }
-              : l
-          )
-        );
-        
-        // Refresh current project data (subtasks might affect task completion)
-        await refreshCurrentProjectData();
-      } catch (e: any) {
-        setError(e.message ?? "Unable to delete subtask");
-        throw e;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [updateProjectData, refreshCurrentProjectData]
-  );
+        updateProjectData(projectId, (lists) =>
+          lists.map((list) =>
+            list.id !== listId
+              ? list
+              : {
+                  ...list,
+                  tasks: list.tasks.map((task) =>
+                    task.id !== taskId
+                      ? task
+                      : {
+                          ...task,
+                          subtasks: (task.subtasks || []).filter((subtask) => subtask.id !== subtaskId),
+                          subtaskCount: Math.max((task.subtaskCount || 1) - 1, 0),
+                        }
+                  ),
+                }
+        )
+      );
+      return true;
+    } catch (e: any) {
+      setError(e.message ?? "Unable to delete subtask");
+      return false;
+    }
+  },
+  [updateProjectData]
+);
 
   return {
     // core selectors
@@ -691,5 +633,8 @@ const moveList = useCallback(
     addSubtask,
     updateSubtask,
     deleteSubtask,
+
+    // force a full refresh from backend
+    forceRefresh,
   };
 }

@@ -6,7 +6,8 @@ import {
   updateProjectController,
   deleteProjectController,
   rebalanceProjectsController,
-  getProjectSummariesController
+  getProjectSummariesController,
+  getFullProjectDataController
 } from '../controllers/projectController';
 import authenticate from '../authMiddleware';
 
@@ -19,6 +20,6 @@ router.get('/summaries', authenticate, getProjectSummariesController);
 router.get('/:id', authenticate, getProjectByIdController);
 router.put('/:id', authenticate, updateProjectController);
 router.delete('/:id', authenticate, deleteProjectController);
-// router.get('/summaries', getProjectSummariesController);
+router.get('/:projectid/full', authenticate, getFullProjectDataController);
 
 export default router;

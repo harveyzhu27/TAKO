@@ -2,37 +2,78 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background-color: #22336b;
-  padding: 4px 8px;
-  margin-top: 8px;
+  /* background-color: #22336b; */
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 24px;
+  padding-right: 8px;
+  /* margin-top: 1px; */
   border-radius: 8px;
   color: white;
   font-size: 1rem;
 }
 
+.subtask-block:hover {
+  background-color: #95D5B2;
+  color: #111;
+}
+
 .subtask-block input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
   margin-right: 10px;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.subtask-block input[type="checkbox"]:checked {
+  border-color: #fff;
+  background: transparent;
+}
+.subtask-block input[type="checkbox"]:checked::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2D6A4F;
 }
 
 .subtask-main {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 5px;
   width: 100%;
   overflow: hidden;
+}
+
+
+.subtask-list{
+  /* background-color: black; */
+  gap: 0px;
 }
 
 .subtask-name-deadline-edit {
   display: flex;
   width: 100%;
-  max-width: 350px;
+  /* max-width: 350px; */
   justify-content: space-between;
   align-items: center;
+  margin: 5px;
 }
 
 .subtask-name-deadline {
   display: flex;
-  width: 325px;
+  /* width: 325px; */
   justify-content: space-between;
   align-items: center;
   font-size: 0.8rem;

@@ -243,7 +243,7 @@ function TaskList({
         </div>
 
         {/* Show subtasks */}
-        {!isCollapsed && task.subtaskCount > 0 && task.subtasks?.length > 0 && (
+        {!isCollapsed && task.subtasks?.length > 0 && (
           <div className="subtask-wrapper">
             <SubtaskList
               projectId={projectId}

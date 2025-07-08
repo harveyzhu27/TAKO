@@ -128,3 +128,14 @@ export async function getProjectSummaries(): Promise<ProjectSummary[]> {
     return data;
   }
 
+// Bulk fetch: Get all lists, tasks, and subtasks for a project
+export async function getFullProjectData(projectId: string) {
+  const token = await getIdToken();
+  const res = await fetch(`${API_URL}/projects/${projectId}/full`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Failed to fetch full project data: ${res.status} ${res.statusText}`);
+  const data = await res.json();
+  return data;
+}
+

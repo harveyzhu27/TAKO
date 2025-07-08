@@ -2,12 +2,17 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background-color: #2D6A4F;
-  margin: 5px;
+  /* background-color: #2D6A4F; */
+  /* margin: 5px; */
   padding: 4px;
   border-radius: 5px;
   color: white;
   height: fit-content;
+  transition: background 0.2s;
+}
+
+.task-block:hover {
+  background: #2D6A4F; /* or a lighter shade matching your theme */
 }
 
 .task-list {
@@ -21,11 +26,12 @@
 .task-bar {
   height: fit-content;
   display: flex;
-  background-color: #2D6A4F;
+  /* background-color: #2D6A4F; */
   align-items: center;
   /* justify-content: center; */
   justify-content: space-between;
   /* width: 100%; */
+  position: relative;
 }
 
 .task-name-deadline {
@@ -33,9 +39,11 @@
   width: 90%;
   justify-content: space-between;
   align-items: center;
-  margin: 5px;
+  /* margin: 5px; */
   height: min-content;
   min-height: 25px;
+  background: transparent !important;
+  border: 0px;
 }
 
 .task-name {
@@ -55,6 +63,7 @@
 }
 
 .task-name-edit {
+  font-family: "Roboto", sans-serif;
   flex: 1;
   min-width: 0;
   width: 90px;
@@ -63,8 +72,12 @@
   border: none;
   color: white;
   outline: none;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   white-space: nowrap;
+  padding: 5px;
+  padding-left: 0px;
+  /* padding-left: 10px; */
 }
 
 .task-date-edit {
@@ -97,11 +110,16 @@
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 4px;
-  opacity: 0.8;
+  opacity: 0;
+  transition: opacity 0.2s;
 }
 
 .task-more-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
+  opacity: 1;
+}
+
+.task-block:hover .task-more-btn {
   opacity: 1;
 }
 
@@ -114,30 +132,35 @@
 
 .task-menu-dropdown {
   position: absolute;
-  background-color: #364471;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  margin-top: 4px;
-  right: 16px;
+  top: 100%;
+  left: 0;
   z-index: 10;
-  display: flex;
-  flex-direction: column;
-  min-width: 140px;
+  background: #f9f9fb;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-radius: 4px;
+  width: max-content;
+  max-width: 180px;
+  margin-top: 2px;
+  padding: 2px 0;
+  white-space: normal;
 }
 
 .task-menu-item {
-  background: transparent;
+  background: none;
   border: none;
-  color: white;
+  color: #222;
+  font-size: 14px;
+  padding: 6px 12px;
   text-align: left;
-  padding: 8px 12px;
-  font-size: 0.9rem;
-  cursor: pointer;
   width: 100%;
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
 .task-menu-item:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background: #e6eaf3;
+  color: #111;
 }
 
 
@@ -156,6 +179,11 @@
   width: 20px;
 }
 
+.add-subtask-button:hover {
+  background-color: #2D6A4F;
+  color: white;
+}
+
 .subtask-name-input{ 
   min-width: 20px;
   max-width: fit-content;
@@ -163,4 +191,38 @@
 
 .subtask-date-input{
   width: 30px;
+}
+
+.subtask-wrapper {
+  background: transparent !important;
+}
+
+.task-block input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  width: 20px;
+  height: 19px;
+  margin-right: 10px;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.task-block input[type="checkbox"]:checked {
+  border-color: #fff;
+  background: transparent;
+}
+.task-block input[type="checkbox"]:checked::after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2D6A4F;
 }

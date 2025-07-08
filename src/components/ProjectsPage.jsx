@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getProjects, createProject } from './api/projects';
+import { getProjects, createProject, getFullProjectData } from './api/projects';
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState([]);
@@ -9,6 +9,21 @@ export default function ProjectsPage() {
   useEffect(() => {
     getProjects().then(setProjects).catch(console.error);
   }, []);
+
+  // Example: Fetch all lists, tasks, and subtasks for a selected project
+  // (Assume selectedProjectId is available)
+  //
+  // useEffect(() => {
+  //   if (!selectedProjectId) return;
+  //   getFullProjectData(selectedProjectId)
+  //     .then(data => {
+  //       // data.lists is an array of lists, each with .tasks, each with .subtasks
+  //       setLists(data.lists);
+  //     })
+  //     .catch(console.error);
+  // }, [selectedProjectId]);
+  //
+  // const [lists, setLists] = useState([]);
 
   const handleCreate = async () => {
     try {

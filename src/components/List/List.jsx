@@ -185,14 +185,19 @@ function List({
                 {
                     showAddTaskOptions ? (
                         <div className="task-input" ref={taskInputRef}>
-                            <input
+                            <textarea
                                 className='add-task-input'
                                 autoFocus
                                 placeholder='Add task...'
                                 value={newTaskName}
+                                ref={taskInputRef}
+                                onInput={e => {
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                }}
                                 onChange={e => setTaskName(e.target.value)}
                                 onKeyDown={async e => {
-                                    if (e.key === 'Enter') {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault();
                                         const trimmedName = newTaskName.trim();
                                         if (!trimmedName) {
@@ -217,6 +222,8 @@ function List({
                                         setToastError("");
                                     }
                                 }}
+                                rows={1}
+                                style={{overflow: 'hidden', resize: 'none'}}
                             />
                             <input
                                 className='add-task-deadline-input'

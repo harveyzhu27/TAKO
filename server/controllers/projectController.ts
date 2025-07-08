@@ -293,3 +293,36 @@ export const rebalanceProjectsController = async (req: Request, res: Response) =
     res.status(500).json({ error: 'Failed to rebalance projects' });
   }
 };
+
+// Bulk fetch: Get all lists, tasks, and subtasks for a project
+export const getFullProjectDataController = async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user.uid;
+    const { projectid } = req.params;
+    const projectRef = db.collection('projects').doc(projectid);
+    const projectSnap = await projectRef.get();
+    if (!projectSnap.exists) return res.status(404).json({ error: 'Project not found' });
+    if (projectSnap.data()?.uid !== uid) return res.status(403).json({ error: 'Forbidden' });
+
+    // Fetch all lists
+    const listsSnap = await projectRef.collection('lists').get();
+    const lists = await Promise.all(listsSnap.docs.map(async (listDoc) => {
+      const listData = listDoc.data();
+      // Fetch all tasks for this list
+      const tasksSnap = await listDoc.ref.collection('tasks').get();
+      const tasks = await Promise.all(tasksSnap.docs.map(async (taskDoc) => {
+        const taskData = taskDoc.data();
+        // Fetch all subtasks for this task
+        const subtasksSnap = await taskDoc.ref.collection('subtasks').get();
+        const subtasks = subtasksSnap.docs.map((subDoc) => subDoc.data());
+        return { ...taskData, subtasks };
+      }));
+      return { ...listData, tasks };
+    }));
+
+    res.status(200).json({ lists });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+};
