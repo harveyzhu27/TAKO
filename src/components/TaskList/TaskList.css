@@ -224,5 +224,9 @@
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  background: #2D6A4F;
+  background: #ffffff;
+}
+.task-checkbox {
+  margin: 0px;
+  height: 100%;
 }

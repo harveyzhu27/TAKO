@@ -79,6 +79,7 @@ function TaskList({
       <div className="task-block" key={`${listId}-${task.id}`}>
         <div className="task-bar">
           <input
+            className="task-checkbox"
             type="checkbox"
             checked={!!task.completedAt}
             onChange={() => {

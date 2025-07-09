@@ -89,3 +89,21 @@
     padding: 15px;
     background-color: #616060;
 }
+
+.cache-indicator {
+    font-size: 0.8em;
+    margin-left: 5px;
+    opacity: 0.7;
+}
+
+.loading-indicator {
+    font-size: 0.8em;
+    margin-left: 5px;
+    opacity: 0.7;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

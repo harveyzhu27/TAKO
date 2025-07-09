@@ -40,12 +40,27 @@ export default function useUserProjects() {
   const [currentProject, setCurrentProject] = useState<string | null>(null); // currently selected project
   const [projectData, setProjectData] = useState<Record<string, List[]>>({}); // record of projects' lists in dictionary format 
   const [loading, setLoading] = useState(false);
+  const [loadingProjects, setLoadingProjects] = useState<Set<string>>(new Set()); // track loading state per project
   const [error, setError] = useState<string | null>(null);
 
   // Add a refreshKey for manual/triggered refreshes
   const [refreshKey, setRefreshKey] = useState(0);
   // Function to force a full refresh from backend
   const forceRefresh = useCallback(() => setRefreshKey(k => k + 1), []);
+  
+  // Function to clear cache for a specific project
+  const clearProjectCache = useCallback((projectId: string) => {
+    setProjectData(prev => {
+      const copy = { ...prev };
+      delete copy[projectId];
+      return copy;
+    });
+  }, []);
+  
+  // Function to clear all project caches
+  const clearAllCaches = useCallback(() => {
+    setProjectData({});
+  }, []);
 
 
   const lists = currentProject
@@ -109,10 +124,23 @@ export default function useUserProjects() {
   // }, [currentUser]);
 
 
-  // Optimized: Only fetch from backend on initial load or when forced
+  // Optimized: Only fetch from backend if data isn't cached or when forced
   useEffect(() => {
     if (!currentProject) return;
+    
+    // Check if project data is already cached
+    const cachedData = projectData[currentProject];
+    if (cachedData && refreshKey === 0) {
+      // Data is already cached and no forced refresh, so don't fetch
+      console.log(`🚀 Using cached data for project: ${currentProject}`);
+      setLoading(false);
+      return;
+    }
+    
+    console.log(`📡 Fetching data for project: ${currentProject}`);
+    
     setLoading(true);
+    setLoadingProjects(prev => new Set(prev).add(currentProject));
     setError(null);
 
     (async () => {
@@ -140,9 +168,14 @@ export default function useUserProjects() {
         setError(e.message ?? "Failed to load project data");
       } finally {
         setLoading(false);
+        setLoadingProjects(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(currentProject);
+          return newSet;
+        });
       }
     })();
-  }, [currentProject, refreshKey]);
+  }, [currentProject, refreshKey, projectData]);
 
   // Projects CRUD
   const addProject = useCallback(async (name: string) => {
@@ -608,6 +641,7 @@ const moveList = useCallback(
 
     // loading & error
     loading,
+    loadingProjects,
     error,
 
     // project‐level actions
@@ -636,5 +670,9 @@ const moveList = useCallback(
 
     // force a full refresh from backend
     forceRefresh,
+    
+    // cache management
+    clearProjectCache,
+    clearAllCaches,
   };
 }

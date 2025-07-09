@@ -21,9 +21,11 @@ export default function App() {
 
     lists,
     fullProject,
+    projectData,
 
     // loading & error
     loading,
+    loadingProjects,
     error,
 
     // project‐level actions
@@ -122,7 +124,8 @@ export default function App() {
               forceEditProjectId={forceEditProjectId}
               setForceEditProjectId={setForceEditProjectId}
               setToastError={setToastError}
-
+              projectData={projectData}
+              loadingProjects={loadingProjects}
             />
           </div>
           <div className="user-info">

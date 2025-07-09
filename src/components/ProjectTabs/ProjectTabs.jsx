@@ -10,7 +10,9 @@ function ProjectTabs({
   updateProject,
   forceEditProjectId,
   setForceEditProjectId,
-  setToastError
+  setToastError,
+  projectData = {},
+  loadingProjects = new Set()
 }) {
   const [newProjectName, setProjectName] = useState("");
   const [showAddOptions, setShowAddOption] = useState(false);
@@ -73,8 +75,15 @@ function ProjectTabs({
                   setShowAddOption(false);
                 }}
                 className={currentProject === project.id ? 'active-tab' : 'basic-tab'}
+                title={projectData && projectData[project.id] ? 'Cached - Fast load' : 'Not cached - Will load from server'}
               >
                 {project.name}
+                {loadingProjects && loadingProjects.has(project.id) && (
+                  <span className="loading-indicator" title="Loading...">⏳</span>
+                )}
+                {projectData && projectData[project.id] && !loadingProjects?.has(project.id) && (
+                  <span className="cache-indicator" title="Cached">💾</span>
+                )}
               </button>
             )}
           </div>
