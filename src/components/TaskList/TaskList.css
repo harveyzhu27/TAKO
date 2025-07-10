@@ -62,6 +62,19 @@
   color: rgb(179, 173, 173);
 }
 
+.task-deadline.overdue {
+  color: #ff4d4f;
+  font-weight: bold;
+}
+.task-deadline.due-today {
+  color: #f7b801;
+  font-weight: bold;
+}
+.task-deadline.due-tomorrow {
+  color: #1890ff;
+  font-weight: bold;
+}
+
 .task-name-edit {
   font-family: "Roboto", sans-serif;
   flex: 1;

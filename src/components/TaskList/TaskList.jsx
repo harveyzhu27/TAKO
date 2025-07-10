@@ -20,12 +20,19 @@ function TaskList({
   const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState('');
   const [newSubtaskDeadline, setNewSubtaskDeadline] = useState('');
+  const [now, setNow] = useState(Date.now()); // For live updates
 
   // Track which tasks have their subtasks collapsed
   const [collapsedTasks, setCollapsedTasks] = useState({});
 
   const menuRef = useRef(null);
   const editRef = useRef(null);
+
+  // Timer to update 'now' every minute for live due date updates
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Close the task menu when clicking outside
   useEffect(() => {
@@ -64,11 +71,48 @@ function TaskList({
       });
   }
 
-  function formatDeadline(num) {
-    if (num === null || num === '' || num === undefined) return '';
-    if (num === '0' || num === 0) return 'Due Today';
-    if (num === '1' || num === 1) return 'Due Tomorrow';
-    return `Due in ${num} days`;
+  // Format deadline using days from now with real-time tracking
+  function formatDeadline(daysFromNow) {
+    if (daysFromNow === null || daysFromNow === undefined || daysFromNow === '') return '';
+    
+    // Ensure daysFromNow is a number
+    const days = typeof daysFromNow === 'string' ? Number(daysFromNow) : daysFromNow;
+    
+    // Calculate the actual due date based on days from now
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(today);
+    dueDate.setDate(today.getDate() + days);
+    
+    // Calculate days difference from today
+    const nowDate = new Date(now);
+    nowDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((dueDate - nowDate) / (1000 * 60 * 60 * 24));
+    
+    // Debug logging for testing
+    console.log(`formatDeadline: daysFromNow=${daysFromNow} (type: ${typeof daysFromNow}), days=${days}, diffDays=${diffDays}, now=${new Date(now).toDateString()}`);
+    
+    if (diffDays < 0) return 'Overdue';
+    if (diffDays === 0) return 'Due Today';
+    if (diffDays === 1) return 'Due Tomorrow';
+    return `Due in ${diffDays} days`;
+  }
+
+  // Helper for color class
+  function deadlineClass(daysFromNow) {
+    if (daysFromNow === null || daysFromNow === undefined || daysFromNow === '') return '';
+    const days = typeof daysFromNow === 'string' ? Number(daysFromNow) : daysFromNow;
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(today);
+    dueDate.setDate(today.getDate() + days);
+    const nowDate = new Date(now);
+    nowDate.setHours(0, 0, 0, 0);
+    const diffDays = Math.floor((dueDate - nowDate) / (1000 * 60 * 60 * 24));
+    if (diffDays < 0) return 'overdue';
+    if (diffDays === 0) return 'due-today';
+    if (diffDays === 1) return 'due-tomorrow';
+    return '';
   }
 
   const sortedTasks = sortTasks(tasks);
@@ -116,7 +160,7 @@ function TaskList({
                 <input
                   className="task-date-edit"
                   type="number"
-                  min={0}
+                  min="0"
                   value={editDeadline}
                   placeholder="0"
                   onChange={e => setEditDeadline(e.target.value)}
@@ -168,8 +212,8 @@ function TaskList({
                     <input
                       className="subtask-date-input"
                       type="number"
-                      min={0}
-                      placeholder="Due in..."
+                      min="0"
+                      placeholder="0"
                       value={newSubtaskDeadline}
                       onChange={e => setNewSubtaskDeadline(e.target.value)}
                     />
@@ -190,7 +234,7 @@ function TaskList({
                   onClick={() => {
                     setEditingTaskId(task.id);
                     setEditName(task.name);
-                    setEditDeadline(task.dueDate ?? '');
+                    setEditDeadline(task.dueDate !== null ? task.dueDate.toString() : '');
                   }}
                 >
                   {task.name}
@@ -199,7 +243,7 @@ function TaskList({
                   )}
                 </span>
                 {task.dueDate ? (
-                  <span className="task-deadline">
+                  <span className={`task-deadline ${deadlineClass(task.dueDate)}`}>
                     {formatDeadline(task.dueDate)}
                   </span>
                 ) : null}
@@ -262,5 +306,7 @@ function TaskList({
     );
   });
 }
+
+
 
 export default React.memo(TaskList);

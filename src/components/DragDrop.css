@@ -1,0 +1,83 @@
+.draggable-item {
+  cursor: grab;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.draggable-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.draggable-item.dragging {
+  cursor: grabbing;
+  opacity: 0.5;
+  transform: rotate(2deg) scale(1.02);
+  z-index: 1000;
+  position: relative;
+}
+
+.drop-zone {
+  transition: all 0.2s ease;
+  min-height: 4px;
+}
+
+.drop-zone.drag-over {
+  background-color: rgba(0, 123, 255, 0.1);
+  border: 2px dashed #007bff;
+  border-radius: 8px;
+  transform: scale(1.02);
+}
+
+.sortable-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Drag handle styles */
+.drag-handle {
+  cursor: grab;
+  padding: 4px;
+  border-radius: 4px;
+  color: #6c757d;
+  transition: all 0.2s ease;
+}
+
+.drag-handle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #495057;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Drop indicator */
+.drop-indicator {
+  height: 2px;
+  background-color: #007bff;
+  margin: 4px 0;
+  border-radius: 1px;
+  transition: all 0.2s ease;
+}
+
+.drop-indicator.active {
+  height: 4px;
+  background-color: #0056b3;
+}
+
+/* Mobile touch support */
+@media (hover: none) and (pointer: coarse) {
+  .draggable-item {
+    cursor: default;
+  }
+  
+  .draggable-item:hover {
+    transform: none;
+  }
+  
+  .drag-handle {
+    cursor: default;
+  }
+} 

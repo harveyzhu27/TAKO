@@ -20,6 +20,7 @@ function List({
     isLeftmost,
     isRightmost,
     setToastError,
+    isDoNowList = false,
 }) {
     const [newTaskName, setTaskName] = useState("");
     const [newTaskDeadline, setTaskDeadline] = useState("");
@@ -110,7 +111,7 @@ function List({
     const hasCompleted = (list.tasks || []).some(task => task.completedAt);
 
     return (
-        <div className='list-container'>
+        <div className={`list-container ${isDoNowList ? 'do-now-list' : ''}`}>
             <div className='list-header'>
                 {editingName ? (
                     <input
@@ -127,18 +128,22 @@ function List({
                 ) : (
                     <span
                         onDoubleClick={() => {
-                            setEditingName(true);
+                            if (!isDoNowList) {
+                                setEditingName(true);
+                            }
                         }}
                         className="list-name"
-                        style={{ cursor: 'pointer' }}
-                        title="Double-click to rename"
+                        style={{ cursor: isDoNowList ? 'default' : 'pointer' }}
+                        title={isDoNowList ? "Do Now list cannot be renamed" : "Double-click to rename"}
                     >
                         {list.name} ({list.taskCount})
                     </span>
                 )}
-                <button className="list-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
-                    ⋮
-                </button>
+                {!isDoNowList && (
+                    <button className="list-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
+                        ⋮
+                    </button>
+                )}
                 {menuOpen && (
                     <div className="list-menu-row" ref={menuRef}>
                         <button
@@ -172,7 +177,7 @@ function List({
             <div className='task-list'>
                 <TaskList
                     projectId={projectId}
-                    listId={list.id}
+                    listId={isDoNowList ? 'do-now' : list.id}
                     tasks={list.tasks}
                     addTask={addTask}
                     deleteTask={deleteTask}
@@ -205,7 +210,7 @@ function List({
                                             return;
                                         }
                                         const deadline = newTaskDeadline.trim() === "" ? null : Number(newTaskDeadline);
-                                        const success = await addTask(projectId, list.id, trimmedName, deadline);
+                                        const success = await addTask(projectId, isDoNowList ? 'do-now' : list.id, trimmedName, deadline);
                                         if (!success) {
                                             setToastError("Task name already exists");
                                             return;
@@ -228,7 +233,7 @@ function List({
                             <input
                                 className='add-task-deadline-input'
                                 type="number"
-                                min={0}
+                                min="0"
                                 placeholder='0'
                                 value={newTaskDeadline}
                                 onChange={e => setTaskDeadline(e.target.value)}
@@ -241,7 +246,7 @@ function List({
                                             return;
                                         }
                                         const deadline = newTaskDeadline.trim() === "" ? null : Number(newTaskDeadline);
-                                        const success = await addTask(projectId, list.id, trimmedName, deadline);
+                                        const success = await addTask(projectId, isDoNowList ? 'do-now' : list.id, trimmedName, deadline);
                                         if (!success) {
                                             setToastError("Task name already exists");
                                             console.log("Toast error triggered!");

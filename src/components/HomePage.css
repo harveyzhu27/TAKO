@@ -1,0 +1,395 @@
+.home-page {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.home-content {
+  max-width: 800px;
+  width: 100%;
+  text-align: center;
+}
+
+.home-title {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 3rem;
+  color: var(--text-color);
+}
+
+.task-summary {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  margin-bottom: 3rem;
+  padding: 2rem;
+  background-color: var(--card-background);
+  border-radius: 16px;
+  box-shadow: var(--box-shadow);
+}
+
+.task-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.completed-today-counter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 2rem;
+  background-color: #e8f5e8;
+  border-radius: 12px;
+  border: 2px solid #4caf50;
+}
+
+.completed-number {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #2e7d32;
+  margin-bottom: 0.5rem;
+}
+
+.completed-label {
+  font-size: 0.9rem;
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+.manual-refresh-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  color: var(--text-color);
+  opacity: 0.6;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.manual-refresh-btn:hover {
+  opacity: 1;
+  background-color: var(--input-background);
+  transform: scale(1.1);
+}
+
+.manual-refresh-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.last-updated {
+  font-size: 0.8rem;
+  color: var(--text-color);
+  opacity: 0.5;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.task-number {
+  font-size: 4rem;
+  font-weight: bold;
+  color: var(--primary-color);
+  line-height: 1;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.refresh-indicator {
+  font-size: 1.5rem;
+  opacity: 0.7;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.task-label {
+  font-size: 1.2rem;
+  color: var(--text-color);
+  opacity: 0.8;
+}
+
+.task-breakdown {
+  display: flex;
+  justify-content: center;
+  gap: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--input-border);
+  margin-left: auto;
+}
+
+.breakdown-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.breakdown-number {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--text-color);
+}
+
+.breakdown-label {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.project-overview {
+  background-color: var(--card-background);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: var(--box-shadow);
+}
+
+.project-overview h2 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-color);
+}
+
+.no-projects {
+  color: var(--text-color);
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.project-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+
+.project-item {
+  background-color: var(--input-background);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.project-item:hover {
+  border-color: var(--primary-color);
+  transform: translateY(-2px);
+}
+
+.project-name {
+  font-weight: 500;
+  color: var(--text-color);
+}
+
+.project-task-count {
+  font-size: 0.9rem;
+  color: var(--text-color);
+  opacity: 0.7;
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.due-tasks-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+.due-today-card,
+.due-tomorrow-card {
+  background-color: var(--card-background);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: var(--box-shadow);
+  text-align: center;
+}
+
+.due-today-card h3,
+.due-tomorrow-card h3 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: var(--text-color);
+}
+
+.due-count {
+  font-size: 3rem;
+  font-weight: bold;
+  margin-bottom: 1.5rem;
+}
+
+.due-today-card .due-count {
+  color: #f7b801; /* Yellow for today */
+}
+
+.due-tomorrow-card .due-count {
+  color: #1890ff; /* Blue for tomorrow */
+}
+
+.due-tasks-list {
+  margin-top: 1rem;
+  text-align: left;
+}
+
+.due-task-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--input-border);
+}
+
+.due-task-item:last-child {
+  border-bottom: none;
+}
+
+.due-task-item .task-name {
+  font-weight: 500;
+  color: var(--text-color);
+  flex: 1;
+}
+
+.due-task-item .task-project {
+  font-size: 0.8rem;
+  color: var(--text-color);
+  opacity: 0.6;
+  margin-left: 1rem;
+}
+
+.placeholder-text {
+  color: var(--text-color);
+  opacity: 0.5;
+  font-style: italic;
+}
+
+.do-now-section {
+  background-color: var(--card-background);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 3rem;
+  box-shadow: var(--box-shadow);
+}
+
+.do-now-section h2 {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-color);
+}
+
+.do-now-tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.do-now-task-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem;
+  background-color: var(--background-color);
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.do-now-task-item .task-name {
+  flex: 1;
+  font-size: 0.95rem;
+  color: var(--text-color);
+}
+
+.do-now-task-item .task-name.completed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.do-now-task-item .task-deadline {
+  font-size: 0.8rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.do-now-task-item .task-deadline.overdue {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+.do-now-task-item .task-deadline.due-today {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.do-now-task-item .task-deadline.due-tomorrow {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.no-tasks {
+  color: var(--text-color);
+  opacity: 0.5;
+  font-style: italic;
+  text-align: center;
+  padding: 1rem;
+}
+
+.more-tasks {
+  color: var(--text-color);
+  opacity: 0.7;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 0.5rem;
+  font-style: italic;
+}
+
+@media (max-width: 768px) {
+  .home-page {
+    padding: 1rem;
+  }
+  
+  .home-title {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .task-number {
+    font-size: 3rem;
+  }
+  
+  .task-breakdown {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .project-list {
+    grid-template-columns: 1fr;
+  }
+
+  .due-tasks-section {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+} 

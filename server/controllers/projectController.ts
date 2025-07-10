@@ -85,12 +85,63 @@ export const getProjectSummariesController = async (req: Request, res: Response)
       .where('uid', '==', uid)
       .select('name', 'order', 'taskCount')
       .get();
-    const summaries = snapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data().name,
-      order: doc.data().order ?? 0,
-      taskCount: doc.data().taskCount ?? 0,
+    
+    const summaries = await Promise.all(snapshot.docs.map(async (doc) => {
+      const projectId = doc.id;
+      const projectData = doc.data();
+      
+      // Get all tasks for this project to calculate due today/tomorrow counts
+      const listsSnapshot = await db.collection('projects').doc(projectId).collection('lists').get();
+      
+      let dueTodayCount = 0;
+      let dueTomorrowCount = 0;
+      
+      // Calculate today's date (start of day)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTimestamp = today.getTime();
+      
+      // Calculate tomorrow's date (start of day)
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowTimestamp = tomorrow.getTime();
+      
+      // Check all tasks in all lists of this project
+      for (const listDoc of listsSnapshot.docs) {
+        const tasksSnapshot = await listDoc.ref.collection('tasks').get();
+        
+        for (const taskDoc of tasksSnapshot.docs) {
+          const taskData = taskDoc.data();
+          
+          // Skip completed tasks
+          if (taskData.completedAt) continue;
+          
+          // Calculate actual due date from days from now
+          if (taskData.dueDate !== null && taskData.dueDate !== undefined) {
+            const dueDate = new Date(today);
+            dueDate.setDate(today.getDate() + taskData.dueDate);
+            const dueDateTimestamp = dueDate.getTime();
+            
+            // Check if due today or tomorrow
+            if (dueDateTimestamp === todayTimestamp) {
+              dueTodayCount++;
+            } else if (dueDateTimestamp === tomorrowTimestamp) {
+              dueTomorrowCount++;
+            }
+          }
+        }
+      }
+      
+      return {
+        id: projectId,
+        name: projectData.name,
+        order: projectData.order ?? 0,
+        taskCount: projectData.taskCount ?? 0,
+        dueTodayCount,
+        dueTomorrowCount,
+      };
     }));
+    
     return res.json(summaries);
   } catch (err) {
     console.error('Error fetching project summaries', err);
