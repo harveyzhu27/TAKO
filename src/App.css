@@ -4,6 +4,7 @@
   --input-background: #2c2c2c;
   --input-border: #3c3c3c;
   --primary-color: #74C69D;
+  --primary-color-rgb: 116, 198, 157;
   --primary-hover-color: #40916C;
   --box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   --card-background: rgb(33, 32, 32);
@@ -197,7 +198,20 @@ body {
   height: 100vh;
   width: 100vw;
   font-weight: bold;
-  font-size: 2em;
+}
+
+.home-page-loading,
+.project-content-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  font-size: 1.2em;
+  color: var(--text-color);
+  background-color: var(--card-background);
+  border-radius: 8px;
+  margin: 20px;
 }
 .extra-taskbar {
   width: 60px;
@@ -209,6 +223,16 @@ body {
   border-left: 1px solid #333;
   gap: 1rem;
   position: relative;
+}
+
+/* Hide right sidebar when on home screen */
+.app-content.home-screen .extra-taskbar {
+  display: none;
+}
+
+/* Make main section take full width when on home screen */
+.app-content.home-screen .main-section {
+  margin-right: 0;
 }
 
 .project-actions button {

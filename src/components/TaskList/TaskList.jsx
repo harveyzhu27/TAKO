@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './TaskList.css';
-import SubtaskList from '../SubtaskList/SubtaskList';
+// import SubtaskList from '../SubtaskList/SubtaskList';
 
 function TaskList({
   projectId,
@@ -9,17 +9,17 @@ function TaskList({
   addTask,
   deleteTask,
   updateTask,
-  addSubtask,
-  deleteSubtask,
-  updateSubtask,
+  // addSubtask,
+  // deleteSubtask,
+  // updateSubtask,
 }) {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editName, setEditName] = useState('');
   const [editDeadline, setEditDeadline] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
-  const [showSubtaskInput, setShowSubtaskInput] = useState(false);
-  const [newSubtaskName, setNewSubtaskName] = useState('');
-  const [newSubtaskDeadline, setNewSubtaskDeadline] = useState('');
+  // const [showSubtaskInput, setShowSubtaskInput] = useState(false);
+  // const [newSubtaskName, setNewSubtaskName] = useState('');
+  // const [newSubtaskDeadline, setNewSubtaskDeadline] = useState('');
   const [now, setNow] = useState(Date.now()); // For live updates
 
   // Track which tasks have their subtasks collapsed
@@ -177,6 +177,7 @@ function TaskList({
                     }
                   }}
                 />
+                {/* Subtask input section commented out - subtasks disabled
                 {showSubtaskInput ? (
                   <div className="subtask-input-block">
                     <input
@@ -226,6 +227,7 @@ function TaskList({
                     ↳
                   </button>
                 )}
+                */}
               </>
             ) : (
               <>
@@ -238,9 +240,9 @@ function TaskList({
                   }}
                 >
                   {task.name}
-                  {task.subtaskCount > 0 && (
+                  {/* {task.subtaskCount > 0 && (
                     <span className="subtask-count"> ({task.subtaskCount})</span>
-                  )}
+                  )} */}
                 </span>
                 {task.dueDate ? (
                   <span className={`task-deadline ${deadlineClass(task.dueDate)}`}>
@@ -287,7 +289,7 @@ function TaskList({
           </div>
         </div>
 
-        {/* Show subtasks */}
+        {/* Show subtasks - commented out - subtasks disabled
         {!isCollapsed && task.subtasks?.length > 0 && (
           <div className="subtask-wrapper">
             <SubtaskList
@@ -302,6 +304,7 @@ function TaskList({
             />
           </div>
         )}
+        */}
       </div>
     );
   });

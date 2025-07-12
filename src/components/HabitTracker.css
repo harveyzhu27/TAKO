@@ -1,0 +1,288 @@
+.habit-tracker {
+  background-color: var(--card-background);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: var(--box-shadow);
+  margin-bottom: 2rem;
+  overflow-x: auto;
+  /* width: 100%; */
+  width: 1190px;
+}
+
+.habit-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.habit-header h2 {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-color);
+}
+
+.habit-subtitle {
+  color: var(--text-color);
+  opacity: 0.7;
+  font-size: 0.9rem;
+}
+
+.habit-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 1000px;
+}
+
+.habit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.habit-row.header-row {
+  position: sticky;
+  top: 0;
+  background-color: var(--card-background);
+  z-index: 10;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--input-border);
+}
+
+.habit-category-header {
+  width: 200px;
+  min-width: 200px;
+  font-weight: bold;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.habit-date-header {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-color);
+  opacity: 0.8;
+  border-radius: 8px;
+  background-color: var(--input-background);
+  border: 1px solid var(--input-border);
+}
+
+.habit-date-header.today {
+  background-color: var(--primary-color);
+  color: white;
+  font-weight: bold;
+}
+
+.habit-category {
+  width: 200px;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+}
+
+.habit-name-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.habit-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.habit-name:hover {
+  background-color: var(--input-background);
+}
+
+.delete-habit-btn {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.2rem;
+  border-radius: 4px;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.habit-name-container:hover .delete-habit-btn {
+  opacity: 1;
+}
+
+.delete-habit-btn:hover {
+  background-color: #ff6b6b;
+  color: white;
+}
+
+.habit-edit {
+  width: 100%;
+}
+
+.habit-edit input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid var(--primary-color);
+  border-radius: 6px;
+  background-color: var(--input-background);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  max-width: 150px;
+}
+
+.habit-edit input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+}
+
+.habit-cell {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--input-border);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  background-color: var(--input-background);
+  position: relative;
+}
+
+.habit-cell:hover {
+  border-color: var(--primary-color);
+  transform: scale(1.05);
+}
+
+.habit-cell.completed {
+  background-color: #4caf50;
+  border-color: #4caf50;
+  color: white;
+}
+
+.habit-cell.today {
+  border-color: var(--primary-color);
+  border-width: 3px;
+}
+
+.habit-cell.today.completed {
+  background-color: #4caf50;
+  border-color: #4caf50;
+}
+
+.checkmark {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.habit-cell.empty {
+  background-color: transparent;
+  border: 2px dashed var(--input-border);
+  cursor: default;
+}
+
+.habit-cell.empty:hover {
+  transform: none;
+  border-color: var(--input-border);
+}
+
+.add-habit-row {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--input-border);
+}
+
+.add-habit-btn {
+  background: none;
+  border: 2px dashed var(--input-border);
+  color: var(--text-color);
+  padding: 0.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  width: 100%;
+  text-align: left;
+}
+
+.add-habit-btn:hover {
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+  background-color: rgba(var(--primary-color-rgb), 0.05);
+}
+
+.habit-add-input {
+  width: 100%;
+}
+
+.habit-add-input input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 2px solid var(--primary-color);
+  border-radius: 6px;
+  background-color: var(--input-background);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  max-width: 150px;
+}
+
+.habit-add-input input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+}
+
+.habit-add-input input::placeholder {
+  color: var(--text-color);
+  opacity: 0.5;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .habit-tracker {
+    padding: 1rem;
+  }
+  
+  .habit-grid {
+    min-width: 800px;
+  }
+  
+  .habit-category,
+  .habit-category-header {
+    width: 150px;
+    min-width: 150px;
+  }
+  
+  .habit-cell,
+  .habit-date-header {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .habit-date-header {
+    font-size: 0.6rem;
+  }
+  
+  .habit-name {
+    font-size: 0.9rem;
+    max-width: 120px;
+  }
+} 

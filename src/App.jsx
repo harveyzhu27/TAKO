@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthContext } from "./hooks/useAuth.jsx";
 import SignUp from "./components/SignUp.jsx";
 import SignIn from "./components/SignIn.jsx";
 
 import ProjectTabs from "./components/ProjectTabs/ProjectTabs.jsx";
-import TaskList from "./components/TaskList/TaskList.jsx";
 import useUserProjects from "./hooks/useUserProjects.jsx";
-import List from "./components/List/List.jsx";
 import HomePage from "./components/HomePage.jsx";
+import ProjectContent from "./components/ProjectContent.jsx";
 
 import { DragDropProvider } from "./components/DragDrop.jsx";
 // import { ProjectSummary } from "../shared/models/ProjectModel.ts"
@@ -17,10 +16,12 @@ import "./App.css";
 export default function App() {
   const { currentUser, logOut } = useAuthContext();
   const [toastError, setToastError] = useState(null);
+  const [wasOnHomeScreen, setWasOnHomeScreen] = useState(false);
+  
   const {
     projectSummaries,
     currentProject,
-    setCurrentProject,
+    setCurrentProject: originalSetCurrentProject,
 
     lists,
     fullProject,
@@ -52,11 +53,45 @@ export default function App() {
     updateTask,
     deleteTask,
 
-    // subtask‐level actions
-    addSubtask,
-    updateSubtask,
-    deleteSubtask,
+    // subtask‐level actions (commented out - subtasks disabled)
+    // addSubtask,
+    // updateSubtask,
+    // deleteSubtask,
   } = useUserProjects();
+
+  // Load home screen preference from localStorage
+  useEffect(() => {
+    if (currentUser) {
+      const savedPreference = localStorage.getItem(`tako-home-screen-${currentUser.uid}`);
+      console.log('🔍 Loading home screen preference:', savedPreference, 'for user:', currentUser.uid);
+      if (savedPreference === 'true') {
+        setWasOnHomeScreen(true);
+        originalSetCurrentProject(null);
+        console.log('🏠 Set to home screen based on saved preference');
+      } else if (savedPreference === 'false') {
+        setWasOnHomeScreen(false);
+        console.log('📁 User prefers projects, will set to first project if available');
+      }
+    }
+  }, [currentUser, originalSetCurrentProject]);
+
+  // Save home screen preference to localStorage
+  const handleSetCurrentProject = useCallback((projectId) => {
+    originalSetCurrentProject(projectId);
+    if (currentUser) {
+      if (projectId === null) {
+        // User is going to home screen
+        localStorage.setItem(`tako-home-screen-${currentUser.uid}`, 'true');
+        setWasOnHomeScreen(true);
+        console.log('🏠 User going to home screen, saved preference');
+      } else {
+        // User is going to a project
+        localStorage.setItem(`tako-home-screen-${currentUser.uid}`, 'false');
+        setWasOnHomeScreen(false);
+        console.log('📁 User going to project:', projectId, 'saved preference');
+      }
+    }
+  }, [currentUser, originalSetCurrentProject]);
 
   const [showDescription, setShowDescription] = useState(false);
   const [descBuffer, setDescBuffer] = useState("");
@@ -120,13 +155,13 @@ export default function App() {
   return (
     <DragDropProvider>
       <div className="app-wrapper">
-        <div className="app-content">
+        <div className={`app-content ${!currentProject ? 'home-screen' : ''}`}>
           <div className="sidebar">
             <div className="project-tab-list">
               <ProjectTabs
                 projects={[...projectSummaries].sort((a, b) => a.order - b.order)}
                 currentProject={currentProject}
-                setCurrentProject={setCurrentProject}
+                setCurrentProject={handleSetCurrentProject}
                 addProject={addProject}
                 deleteProject={deleteProject}
                 updateProject={updateProject}
@@ -148,74 +183,31 @@ export default function App() {
           <div className="main-section">
             <main className="main-panel">
               {!currentProject ? (
-                              <HomePage 
-                projectSummaries={projectSummaries} 
-                refreshProjectSummaries={refreshProjectSummaries}
-                doNowTasks={doNowTasks}
-                doNowTaskCount={doNowTaskCount}
-                tasksCompletedToday={tasksCompletedToday}
-                allTasks={allTasks}
-              />
+                <HomePage 
+                  projectSummaries={projectSummaries} 
+                  refreshProjectSummaries={refreshProjectSummaries}
+                  doNowTasks={doNowTasks}
+                  doNowTaskCount={doNowTaskCount}
+                  tasksCompletedToday={tasksCompletedToday}
+                  allTasks={allTasks}
+                  setCurrentProject={handleSetCurrentProject}
+                  addTask={addTask}
+                  deleteTask={deleteTask}
+                  updateTask={updateTask}
+                />
               ) : (
-                <div className="list-task-container">
-                  {lists
-                    .slice()  // copy before sort
-                    .sort((a, b) => a.order - b.order)
-                    .map((list, idx) => (
-                      <div key={list.id} className="list-wrapper">
-                        <List
-                          projectId={currentProject}
-                          list={list}
-                          lists={lists}
-                          addList={addList}
-                          deleteList={deleteList}
-                          updateList={updateList}
-                          moveList={moveList}
-                          addTask={addTask}
-                          deleteTask={deleteTask}
-                          updateTask={updateTask}
-                          addSubtask={addSubtask}
-                          deleteSubtask={deleteSubtask}
-                          updateSubtask={updateSubtask}
-                          listCount={lists.length}
-                          isLeftmost={idx === 0}
-                          isRightmost={idx === lists.length - 1}
-                          setToastError={setToastError}
-                        />
-                      </div>
-                    ))}
-                  
-                  {/* Do Now List - appears as a regular list on the right */}
-                  <div className="list-wrapper">
-                                      <List
-                    projectId={currentProject}
-                    list={{
-                      id: 'do-now',
-                      name: '🚀 Do Now',
-                      projectId: currentProject,
-                      order: lists.length + 1,
-                      taskCount: doNowTaskCount,
-                      tasks: doNowTasks,
-                    }}
-                      lists={lists}
-                      addList={addList}
-                      deleteList={deleteList}
-                      updateList={updateList}
-                      moveList={moveList}
-                      addTask={addTask}
-                      deleteTask={deleteTask}
-                      updateTask={updateTask}
-                      addSubtask={addSubtask}
-                      deleteSubtask={deleteSubtask}
-                      updateSubtask={updateSubtask}
-                      listCount={lists.length + 1}
-                      isLeftmost={false}
-                      isRightmost={true}
-                      setToastError={setToastError}
-                      isDoNowList={true}
-                    />
-                  </div>
-                </div>
+                <ProjectContent
+                  currentProject={currentProject}
+                  lists={lists}
+                  addList={addList}
+                  deleteList={deleteList}
+                  updateList={updateList}
+                  moveList={moveList}
+                  addTask={addTask}
+                  deleteTask={deleteTask}
+                  updateTask={updateTask}
+                  setToastError={setToastError}
+                />
               )}
             </main>
           </div>
@@ -276,8 +268,8 @@ export default function App() {
                     const nextProject = sorted[currentIndex + 1] || sorted[currentIndex - 1];
 
                     deleteProject(currentProject).then(() => {
-                      if (nextProject) setCurrentProject(nextProject.id);
-                      else setCurrentProject(null);
+                      if (nextProject) handleSetCurrentProject(nextProject.id);
+                      else handleSetCurrentProject(null);
                     });
                   }}
                 >

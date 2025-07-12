@@ -51,7 +51,8 @@
 
 .active-home-tab {
     background-color: #74C69D;
-    height: 50px;
+    height: 75px;
+    padding: 15px;
 
 }
 
@@ -106,4 +107,16 @@
 @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+.project-tabs-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 50px;
+    background-color: #3c3c3c;
+    color: #ffffff;
+    font-size: 0.9em;
+    border-radius: 8px;
+    margin: 10px;
 }

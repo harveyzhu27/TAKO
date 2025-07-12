@@ -16,7 +16,6 @@ function ProjectTabs({
 }) {
   const [newProjectName, setProjectName] = useState("");
   const [showAddOptions, setShowAddOption] = useState(false);
-  const [showHomeScreen, setShowHomeScreen] = useState(false);
   const [editNameBuffer, setEditNameBuffer] = useState("");
   const inputRef = useRef(null);
 
@@ -34,10 +33,9 @@ function ProjectTabs({
   return (
     <div className="project-tabs-container">
       <button
-        className={showHomeScreen ? 'active-home-tab' : 'home-tab'}
+        className={!currentProject ? 'active-home-tab' : 'home-tab'}
         onClick={() => {
-          setShowHomeScreen(true);
-          setCurrentProject("");
+          setCurrentProject(null);
           setShowAddOption(false);
         }}
       >
@@ -71,7 +69,6 @@ function ProjectTabs({
               <button
                 onClick={() => {
                   setCurrentProject(project.id);
-                  setShowHomeScreen(false);
                   setShowAddOption(false);
                 }}
                 className={currentProject === project.id ? 'active-tab' : 'basic-tab'}
@@ -120,9 +117,8 @@ function ProjectTabs({
         <button
           className='add-project-button'
           onClick={() => {
-            setCurrentProject("");
+            setCurrentProject(null);
             setShowAddOption(true);
-            setShowHomeScreen(false);
           }}
         >
           Add
