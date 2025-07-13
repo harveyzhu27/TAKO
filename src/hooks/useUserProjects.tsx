@@ -51,7 +51,7 @@ export default function useUserProjects() {
   const [doNowTasks, setDoNowTasks] = useState<Task[]>([]); // Do Now tasks
   const [needsSync, setNeedsSync] = useState(false); // Track if sync is needed
   const [tasksCompletedToday, setTasksCompletedToday] = useState(0); // Track tasks completed today
-  const [allTasks, setAllTasks] = useState<Task[]>([]); // All tasks across all projects for due today/tomorrow display
+  // Removed allTasks state - we now get due counts from project summaries for better performance
 
   // Add a refreshKey for manual/triggered refreshes
   const [refreshKey, setRefreshKey] = useState(0);
@@ -149,36 +149,14 @@ export default function useUserProjects() {
   }, [currentUser]);
 
   // Load all tasks across all projects for due today/tomorrow display
+  // This is now optimized - we get due counts from project summaries instead
   const loadAllTasks = useCallback(async () => {
     if (!currentUser) return;
     
-    try {
-      const allTasksList: Task[] = [];
-      
-      // Get all projects
-      const projects = await apiGetAllProjects();
-      
-      // For each project, get all lists and tasks
-      for (const project of projects) {
-        const lists = await apiGetLists(project.id);
-        
-        for (const list of lists) {
-          const tasks = await apiGetTasks(project.id, list.id);
-          // const tasksWithSubtasks = await Promise.all(
-          //   tasks.map(async (task) => {
-          //     const subtasks = await apiGetSubtasks(project.id, list.id, task.id);
-          //     return { ...task, subtasks };
-          //   })
-          // );
-          const tasksWithSubtasks = tasks.map(task => ({ ...task, subtasks: [] }));
-          allTasksList.push(...tasksWithSubtasks);
-        }
-      }
-      
-      setAllTasks(allTasksList);
-    } catch (err: unknown) {
-      console.error("🔴 loadAllTasks failed:", (err as Error).message);
-    }
+    // Since we now get due today/tomorrow counts from project summaries,
+    // we don't need to fetch all tasks just for display purposes
+    // This significantly improves performance
+    // setAllTasks([]); // Removed - no longer needed
   }, [currentUser]);
 
   useEffect(() => {
@@ -283,7 +261,9 @@ export default function useUserProjects() {
         name: newProject.name,
         description: newProject.description,
         order: newProject.order,
-        taskCount: newProject.taskCount
+        taskCount: newProject.taskCount,
+        dueTodayCount: 0,
+        dueTomorrowCount: 0
       }
       setProjectSummaries(prev => [...prev, newSummary]);
 
@@ -337,6 +317,8 @@ export default function useUserProjects() {
         description: updatedProject.description,
         order: updatedProject.order,
         taskCount: updatedProject.taskCount,
+        dueTodayCount: 0,
+        dueTomorrowCount: 0
       };
       setProjectSummaries(prev => prev.map(p => p.id === projectId ? updatedSummary : p));
       return updatedProject;
@@ -595,7 +577,7 @@ const moveList = useCallback(
           }
           
           // Update allTasks state for immediate due today/tomorrow updates
-          setAllTasks(prev => [...prev, { ...newTask, subtasks: [] }]);
+          // setAllTasks(prev => [...prev, { ...newTask, subtasks: [] }]);
         } else {
           newTask = await apiCreateTask(projectId, listId, name, dueDate);
           
@@ -625,7 +607,7 @@ const moveList = useCallback(
           );
           
           // Update allTasks state for immediate due today/tomorrow updates
-          setAllTasks(prev => [...prev, { ...newTask, subtasks: [] }]);
+          // setAllTasks(prev => [...prev, { ...newTask, subtasks: [] }]);
           
           // Mark that sync is needed
           setNeedsSync(true);
@@ -706,13 +688,13 @@ const moveList = useCallback(
             }
             
             // Update allTasks state for immediate due today/tomorrow updates
-            setAllTasks(prev => 
-              prev.map(t => 
-                t.id === taskId 
-                  ? { ...t, ...updates }
-                  : t
-              )
-            );
+            // setAllTasks(prev => 
+            //   prev.map(t => 
+            //     t.id === taskId 
+            //       ? { ...t, ...updates }
+            //       : t
+            //   )
+            // );
             
             // Mark that sync is needed
             setNeedsSync(true);
@@ -760,13 +742,13 @@ const moveList = useCallback(
               );
               
               // Update allTasks state for immediate due today/tomorrow updates
-              setAllTasks(prev => 
-                prev.map(t => 
-                  t.id === taskId 
-                    ? { ...t, ...updates }
-                    : t
-                )
-              );
+              // setAllTasks(prev => 
+              //   prev.map(t => 
+              //     t.id === taskId 
+              //       ? { ...t, ...updates }
+              //       : t
+              //   )
+              // );
               
               // Mark that sync is needed
               setNeedsSync(true);
@@ -818,7 +800,7 @@ const moveList = useCallback(
           }
           
           // Update allTasks state for immediate due today/tomorrow updates
-          setAllTasks(prev => prev.filter(t => t.id !== taskId));
+          // setAllTasks(prev => prev.filter(t => t.id !== taskId));
           
           // Mark that sync is needed
           setNeedsSync(true);
@@ -849,7 +831,7 @@ const moveList = useCallback(
           );
           
           // Update allTasks state for immediate due today/tomorrow updates
-          setAllTasks(prev => prev.filter(t => t.id !== taskId));
+          // setAllTasks(prev => prev.filter(t => t.id !== taskId));
           
           // Mark that sync is needed
           setNeedsSync(true);
@@ -979,7 +961,7 @@ const moveList = useCallback(
     doNowTasks,            // Task[] for Do Now list
     doNowTaskCount,        // number of uncompleted Do Now tasks
     tasksCompletedToday,   // number of tasks completed today
-    allTasks,              // Task[] for all projects (due today/tomorrow display)
+    // allTasks removed - now using due counts from summaries
 
     // loading & error
     loading,

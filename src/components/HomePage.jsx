@@ -4,7 +4,7 @@ import DoNowList from './DoNowList.jsx';
 import './HomePage.css';
 
 const HomePageComponent = React.lazy(() => Promise.resolve({
-  default: function HomePageComponent({ projectSummaries, refreshProjectSummaries, doNowTasks = [], doNowTaskCount = 0, tasksCompletedToday = 0, allTasks = [], setCurrentProject, addTask, deleteTask, updateTask }) {
+  default: function HomePageComponent({ projectSummaries, refreshProjectSummaries, doNowTasks = [], doNowTaskCount = 0, tasksCompletedToday = 0, setCurrentProject, addTask, deleteTask, updateTask }) {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
     const [now, setNow] = useState(Date.now()); // For live updates
@@ -133,37 +133,15 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
       return '';
     };
 
-    // Calculate due today and due tomorrow tasks from allTasks
-    const dueTodayTasks = allTasks.filter(task => {
-      if (task.completedAt) return false; // Skip completed tasks
-      if (task.dueDate === null || task.dueDate === undefined) return false;
-      
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      const dueDate = new Date(today);
-      dueDate.setDate(today.getDate() + task.dueDate);
-      const dueDateTimestamp = dueDate.getTime();
-      
-      return dueDateTimestamp === today.getTime();
-    });
-
-    const dueTomorrowTasks = allTasks.filter(task => {
-      if (task.completedAt) return false; // Skip completed tasks
-      if (task.dueDate === null || task.dueDate === undefined) return false;
-      
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 1);
-      const dueDate = new Date(today);
-      dueDate.setDate(today.getDate() + task.dueDate);
-      const dueDateTimestamp = dueDate.getTime();
-      
-      return dueDateTimestamp === tomorrow.getTime();
-    });
-
-    const dueTodayCount = dueTodayTasks.length;
-    const dueTomorrowCount = dueTomorrowTasks.length;
+    // Calculate due today and due tomorrow counts from project summaries
+    // This is much more efficient than filtering allTasks
+    const dueTodayCount = projectSummaries.reduce((sum, project) => {
+      return sum + (project.dueTodayCount || 0);
+    }, 0);
+    
+    const dueTomorrowCount = projectSummaries.reduce((sum, project) => {
+      return sum + (project.dueTomorrowCount || 0);
+    }, 0);
 
     return (
       <div className="home-page">

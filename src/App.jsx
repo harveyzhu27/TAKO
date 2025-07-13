@@ -183,18 +183,17 @@ export default function App() {
           <div className="main-section">
             <main className="main-panel">
               {!currentProject ? (
-                <HomePage 
-                  projectSummaries={projectSummaries} 
-                  refreshProjectSummaries={refreshProjectSummaries}
-                  doNowTasks={doNowTasks}
-                  doNowTaskCount={doNowTaskCount}
-                  tasksCompletedToday={tasksCompletedToday}
-                  allTasks={allTasks}
-                  setCurrentProject={handleSetCurrentProject}
-                  addTask={addTask}
-                  deleteTask={deleteTask}
-                  updateTask={updateTask}
-                />
+                            <HomePage
+              projectSummaries={projectSummaries}
+              refreshProjectSummaries={refreshProjectSummaries}
+              doNowTasks={doNowTasks}
+              doNowTaskCount={doNowTaskCount}
+              tasksCompletedToday={tasksCompletedToday}
+              setCurrentProject={handleSetCurrentProject}
+              addTask={addTask}
+              deleteTask={deleteTask}
+              updateTask={updateTask}
+            />
               ) : (
                 <ProjectContent
                   currentProject={currentProject}

@@ -81,38 +81,48 @@ export const getProjectSummariesController = async (req: Request, res: Response)
   try {
     const uid = (req as any).user.uid
     
-    const snapshot = await db.collection('projects')
+    // Get all projects for this user
+    const projectsSnapshot = await db.collection('projects')
       .where('uid', '==', uid)
       .select('name', 'order', 'taskCount')
       .get();
     
-    const summaries = await Promise.all(snapshot.docs.map(async (doc) => {
+    if (projectsSnapshot.empty) {
+      return res.json([]);
+    }
+    
+    // Calculate today's and tomorrow's timestamps (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowTimestamp = tomorrow.getTime();
+    
+    // Process each project to get due counts
+    const summaries = await Promise.all(projectsSnapshot.docs.map(async (doc) => {
       const projectId = doc.id;
       const projectData = doc.data();
-      
-      // Get all tasks for this project to calculate due today/tomorrow counts
-      const listsSnapshot = await db.collection('projects').doc(projectId).collection('lists').get();
       
       let dueTodayCount = 0;
       let dueTomorrowCount = 0;
       
-      // Calculate today's date (start of day)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayTimestamp = today.getTime();
-      
-      // Calculate tomorrow's date (start of day)
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowTimestamp = tomorrow.getTime();
-      
-      // Check all tasks in all lists of this project
-      for (const listDoc of listsSnapshot.docs) {
-        const tasksSnapshot = await listDoc.ref.collection('tasks').get();
+      try {
+        // Get all lists for this project
+        const listsSnapshot = await db.collection('projects').doc(projectId).collection('lists').get();
         
-        for (const taskDoc of tasksSnapshot.docs) {
-          const taskData = taskDoc.data();
-          
+        // Get all tasks for all lists in parallel
+        const listTasksPromises = listsSnapshot.docs.map(async (listDoc) => {
+          const tasksSnapshot = await listDoc.ref.collection('tasks').get();
+          return tasksSnapshot.docs.map(taskDoc => taskDoc.data());
+        });
+        
+        const allListTasks = await Promise.all(listTasksPromises);
+        const allTasks = allListTasks.flat();
+        
+        // Calculate due counts
+        for (const taskData of allTasks) {
           // Skip completed tasks
           if (taskData.completedAt) continue;
           
@@ -130,6 +140,9 @@ export const getProjectSummariesController = async (req: Request, res: Response)
             }
           }
         }
+      } catch (error) {
+        console.error(`Error processing project ${projectId}:`, error);
+        // Continue with zero counts if there's an error
       }
       
       return {

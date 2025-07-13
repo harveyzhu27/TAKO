@@ -1,12 +1,13 @@
 .habit-tracker {
+  display: flex;
   background-color: var(--card-background);
   border-radius: 16px;
   padding: 2rem;
   box-shadow: var(--box-shadow);
   margin-bottom: 2rem;
   overflow-x: auto;
-  /* width: 100%; */
-  width: 1190px;
+  width: 100%;
+  /* width: 1190px; */
 }
 
 .habit-header {

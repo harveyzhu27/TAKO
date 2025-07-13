@@ -43,4 +43,12 @@ export function createProject({
   };
 }
 
-export type ProjectSummary = Pick<Project, "id" | "name" | "order" | "description" | "taskCount">;
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  order: number;
+  description: string;
+  taskCount: number;
+  dueTodayCount: number;
+  dueTomorrowCount: number;
+}
