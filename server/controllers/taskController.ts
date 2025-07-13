@@ -12,6 +12,11 @@ export const createTaskController = async (req: Request, res: Response) => {
     const uid = (req as any).user.uid;
     const { projectid, listid } = req.params;
 
+    const name = validateName(req.body.name);
+    if (!name)
+      return res.status(400).json({ error: 'Invalid task name' });
+
+    // Quick validation - check if project and list exist (optional for performance)
     const projectRef = db.collection('projects').doc(projectid);
     const projectSnap = await projectRef.get();
     if (!projectSnap.exists || projectSnap.data()?.uid !== uid)
@@ -21,17 +26,8 @@ export const createTaskController = async (req: Request, res: Response) => {
     const listSnap = await listRef.get();
     if (!listSnap.exists)
       return res.status(404).json({ error: 'List not found' });
-    
 
-    const name = validateName(req.body.name);
-    if (!name)
-      return res.status(400).json({ error: 'Invalid task name' });
-
-    // Unique in the list
-    const dupSnap = await listRef.collection('tasks').where('name', '==', name).get();
-    if (!dupSnap.empty)
-      return res.status(400).json({ error: 'Duplicate task name' });
-
+    // Create task object
     const taskId = getNewTaskId();
     const task = createTask({
       id: taskId,
@@ -43,11 +39,27 @@ export const createTaskController = async (req: Request, res: Response) => {
       order: currentTaskOrder++,
     });
 
-    await listRef.collection('tasks').doc(taskId).set(task);
+    // Use batch operations for better performance
+    const batch: WriteBatch = db.batch();
     
-    // Update taskCount for list and project
-    await recalculateTaskCount(projectid, listid);
-    await recalculateProjectTaskCount(projectid);
+    // Add task
+    const taskRef = db.collection('projects').doc(projectid)
+      .collection('lists').doc(listid)
+      .collection('tasks').doc(taskId);
+    batch.set(taskRef, task);
+    
+    // Optimistically increment list taskCount (since new task is incomplete)
+    batch.update(listRef, { 
+      taskCount: (listSnap.data()?.taskCount || 0) + 1 
+    });
+    
+    // Optimistically increment project taskCount
+    batch.update(projectRef, { 
+      taskCount: (projectSnap.data()?.taskCount || 0) + 1 
+    });
+    
+    // Execute all operations in a single batch
+    await batch.commit();
     
     res.status(201).json({ task });
   } catch (err) {
@@ -131,13 +143,40 @@ export const updateTaskController = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    await taskRef.update(updates);
+    // Use batch operations for better performance
+    const batch: WriteBatch = db.batch();
     
-    // Update taskCount if completion status changed
+    // Update task
+    batch.update(taskRef, updates);
+    
+    // Optimistically update taskCount if completion status changed
     if (req.body.completedAt !== undefined) {
-      await recalculateTaskCount(projectid, listid);
-      await recalculateProjectTaskCount(projectid);
+      const currentTask = taskSnap.data()!;
+      const isCompleting = req.body.completedAt !== null;
+      const wasCompleted = currentTask.completedAt !== null;
+      
+      if (isCompleting !== wasCompleted) {
+        const listRef = db.collection('projects').doc(projectid)
+          .collection('lists').doc(listid);
+        const projectRef = db.collection('projects').doc(projectid);
+        
+        // Update list taskCount
+        const listSnap = await listRef.get();
+        const currentListCount = listSnap.data()?.taskCount || 0;
+        batch.update(listRef, { 
+          taskCount: isCompleting ? Math.max(currentListCount - 1, 0) : currentListCount + 1 
+        });
+        
+        // Update project taskCount
+        const projectSnap = await projectRef.get();
+        const currentProjectCount = projectSnap.data()?.taskCount || 0;
+        batch.update(projectRef, { 
+          taskCount: isCompleting ? Math.max(currentProjectCount - 1, 0) : currentProjectCount + 1 
+        });
+      }
     }
+    
+    await batch.commit();
     
     const updatedSnap = await taskRef.get();
     const updatedTask = updatedSnap.data();
@@ -163,16 +202,38 @@ export const deleteTaskController = async (req: Request, res: Response) => {
     if (!taskSnap.exists || taskSnap.data()?.uid !== uid)
       return res.status(404).json({ error: 'Task not found or forbidden' });
 
-    // delete subtasks first
+    // Get task data to check if it was incomplete (affects taskCount)
+    const taskData = taskSnap.data()!;
+    const wasIncomplete = taskData.completedAt === null;
+    
+    // delete subtasks and task in one batch
     const subsSnap = await taskRef.collection('subtasks').get();
     const batch: WriteBatch = db.batch();
     subsSnap.docs.forEach(sd => batch.delete(sd.ref));
     batch.delete(taskRef);
+    
+    // Optimistically update taskCount if task was incomplete
+    if (wasIncomplete) {
+      const listRef = db.collection('projects').doc(projectid)
+        .collection('lists').doc(listid);
+      const projectRef = db.collection('projects').doc(projectid);
+      
+      // Update list taskCount
+      const listSnap = await listRef.get();
+      const currentListCount = listSnap.data()?.taskCount || 0;
+      batch.update(listRef, { 
+        taskCount: Math.max(currentListCount - 1, 0) 
+      });
+      
+      // Update project taskCount
+      const projectSnap = await projectRef.get();
+      const currentProjectCount = projectSnap.data()?.taskCount || 0;
+      batch.update(projectRef, { 
+        taskCount: Math.max(currentProjectCount - 1, 0) 
+      });
+    }
+    
     await batch.commit();
-
-    // Update taskCount for list and project
-    await recalculateTaskCount(projectid, listid);
-    await recalculateProjectTaskCount(projectid);
 
     res.status(200).json({ message: 'Task deleted' });
   } catch (err) {

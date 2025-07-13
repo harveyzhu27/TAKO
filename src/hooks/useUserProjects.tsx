@@ -551,8 +551,25 @@ const moveList = useCallback(
       name: string,
       dueDate?: number
     ) => {
-      setLoading(true);
       setError(null);
+      
+      // Create optimistic task immediately for instant UI feedback
+      const optimisticTaskId = `temp-${Date.now()}-${Math.random()}`;
+      const optimisticTask: Task = {
+        id: optimisticTaskId,
+        uid: currentUser!.uid,
+        name,
+        projectId,
+        listId,
+        dueDate: dueDate ?? null,
+        createdAt: Date.now(),
+        completedAt: null,
+        tags: [],
+        order: Date.now(), // Temporary order
+        subtaskCount: 0,
+        subtasks: []
+      };
+      
       try {
         let newTask: Task;
         
@@ -561,11 +578,11 @@ const moveList = useCallback(
           const taskId = `do-now-${Date.now()}`; // Generate a unique ID
           // For global do-now tasks, use a default project ID
           const effectiveProjectId = projectId === 'global' ? 'default' : projectId;
-          newTask = await apiCreateDoNowTask(effectiveProjectId, taskId, name, dueDate);
-          setDoNowTasks(prev => [...prev, { ...newTask, subtasks: [] }]);
           
-          // Update project summary taskCount optimistically (only count incomplete tasks)
-          // Only update if it's not a global task
+          // Add optimistic task immediately
+          setDoNowTasks(prev => [...prev, { ...optimisticTask, id: taskId, subtasks: [] }]);
+          
+          // Update project summary taskCount optimistically
           if (projectId !== 'global') {
             setProjectSummaries(prev => 
               prev.map(p => 
@@ -576,21 +593,21 @@ const moveList = useCallback(
             );
           }
           
-          // Update allTasks state for immediate due today/tomorrow updates
-          // setAllTasks(prev => [...prev, { ...newTask, subtasks: [] }]);
-        } else {
-          newTask = await apiCreateTask(projectId, listId, name, dueDate);
+          // Make API call in background
+          newTask = await apiCreateDoNowTask(effectiveProjectId, taskId, name, dueDate);
           
-          // Optimistic update - add task to local state immediately
+          // Replace optimistic task with real task
+          setDoNowTasks(prev => 
+            prev.map(t => t.id === taskId ? { ...newTask, subtasks: [] } : t)
+          );
+        } else {
+          // Add optimistic task immediately for instant UI feedback
           updateProjectData(projectId, lists =>
             lists.map(l =>
               l.id === listId
                 ? {
                   ...l,
-                  tasks: [
-                    ...l.tasks,
-                    { ...newTask, subtasks: [] }],
-                  // Update taskCount optimistically
+                  tasks: [...l.tasks, { ...optimisticTask, subtasks: [] }],
                   taskCount: (l.taskCount || 0) + 1,
                 }
                 : l
@@ -606,8 +623,22 @@ const moveList = useCallback(
             )
           );
           
-          // Update allTasks state for immediate due today/tomorrow updates
-          // setAllTasks(prev => [...prev, { ...newTask, subtasks: [] }]);
+          // Make API call in background
+          newTask = await apiCreateTask(projectId, listId, name, dueDate);
+          
+          // Replace optimistic task with real task
+          updateProjectData(projectId, lists =>
+            lists.map(l =>
+              l.id === listId
+                ? {
+                  ...l,
+                  tasks: l.tasks.map(t =>
+                    t.id === optimisticTaskId ? { ...newTask, subtasks: [] } : t
+                  ),
+                }
+                : l
+            )
+          );
           
           // Mark that sync is needed
           setNeedsSync(true);
@@ -615,13 +646,44 @@ const moveList = useCallback(
         
         return newTask;
       } catch (e: any) {
+        // Revert optimistic updates on error
+        if (listId === 'do-now') {
+          setDoNowTasks(prev => prev.filter(t => t.id !== optimisticTaskId));
+          if (projectId !== 'global') {
+            setProjectSummaries(prev => 
+              prev.map(p => 
+                p.id === projectId 
+                  ? { ...p, taskCount: Math.max((p.taskCount || 0) - 1, 0) }
+                  : p
+              )
+            );
+          }
+        } else {
+          updateProjectData(projectId, lists =>
+            lists.map(l =>
+              l.id === listId
+                ? {
+                  ...l,
+                  tasks: l.tasks.filter(t => t.id !== optimisticTaskId),
+                  taskCount: Math.max((l.taskCount || 0) - 1, 0),
+                }
+                : l
+            )
+          );
+          setProjectSummaries(prev => 
+            prev.map(p => 
+              p.id === projectId 
+                ? { ...p, taskCount: Math.max((p.taskCount || 0) - 1, 0) }
+                : p
+            )
+          );
+        }
+        
         setError(e.message ?? "Unable to create task");
-        // throw e;
-      } finally {
-        setLoading(false);
+        throw e; // Re-throw so UI can handle the error
       }
     },
-    [updateProjectData]
+    [updateProjectData, currentUser]
   );
 
   // UPDATE a task
@@ -633,37 +695,38 @@ const moveList = useCallback(
       updates: TaskUpdate
     ) => {
       setError(null);
-      try {
-        let updated: Task;
+      
+      // For completion status changes, apply optimistic updates immediately
+      if (updates.completedAt !== undefined) {
+        const isCompleting = updates.completedAt !== null;
         
-        // Handle Do Now tasks differently
+        // Handle Do Now tasks
         if (listId === 'do-now') {
-          await apiUpdateDoNowTask(taskId, updates);
-          setDoNowTasks(prev => 
-            prev.map(t => 
-              t.id === taskId 
-                ? { ...t, ...updates, subtasks: t.subtasks } // preserve existing subtasks
-                : t
-            )
-          );
-          updated = doNowTasks.find(t => t.id === taskId)!;
+          const currentTask = doNowTasks.find(t => t.id === taskId);
+          const wasCompleted = currentTask?.completedAt !== null;
           
-          // Handle task completion tracking
-          if (updates.completedAt !== undefined) {
+          if (isCompleting !== wasCompleted) {
+            // Apply optimistic update immediately
+            setDoNowTasks(prev => 
+              prev.map(t => 
+                t.id === taskId 
+                  ? { ...t, ...updates, subtasks: t.subtasks }
+                  : t
+              )
+            );
+            
+            // Update task completion tracking
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             
-            if (updates.completedAt) {
-              // Task was completed
-              const completedDate = new Date(updates.completedAt);
+            if (isCompleting) {
+              const completedDate = new Date(updates.completedAt!);
               if (completedDate >= today) {
                 setTasksCompletedToday(prev => prev + 1);
               }
             } else {
-              // Task was uncompleted
-              const wasCompletedToday = doNowTasks.find(t => t.id === taskId)?.completedAt;
-              if (wasCompletedToday) {
-                const completedDate = new Date(wasCompletedToday);
+              if (wasCompleted && currentTask?.completedAt) {
+                const completedDate = new Date(currentTask.completedAt);
                 if (completedDate >= today) {
                   setTasksCompletedToday(prev => Math.max(prev - 1, 0));
                 }
@@ -671,88 +734,102 @@ const moveList = useCallback(
             }
             
             // Update project summary taskCount optimistically
-            // Only update if it's not a global task
             if (projectId !== 'global') {
               setProjectSummaries(prev => 
                 prev.map(p => 
                   p.id === projectId 
                     ? { 
                         ...p, 
-                        taskCount: updates.completedAt 
-                          ? Math.max((p.taskCount || 0) - 1, 0) // completing a task
-                          : (p.taskCount || 0) + 1 // uncompleting a task
+                        taskCount: isCompleting 
+                          ? Math.max((p.taskCount || 0) - 1, 0)
+                          : (p.taskCount || 0) + 1
                       }
                     : p
                 )
               );
             }
+          }
+        } else {
+          // Handle regular tasks
+          const currentTask = projectData[projectId]?.find(l => 
+            l.tasks.some(t => t.id === taskId)
+          )?.tasks.find(t => t.id === taskId);
+          const wasCompleted = currentTask?.completedAt !== null;
+          
+          if (isCompleting !== wasCompleted) {
+            // Apply optimistic update immediately
+            updateProjectData(projectId, lists =>
+              lists.map(l =>
+                l.id === listId
+                  ? {
+                    ...l,
+                    tasks: l.tasks.map(t =>
+                      t.id === taskId
+                        ? { ...t, ...updates, subtasks: t.subtasks }
+                        : t
+                    ),
+                    taskCount: isCompleting 
+                      ? Math.max((l.taskCount || 0) - 1, 0)
+                      : (l.taskCount || 0) + 1,
+                  }
+                  : l
+              )
+            );
             
-            // Update allTasks state for immediate due today/tomorrow updates
-            // setAllTasks(prev => 
-            //   prev.map(t => 
-            //     t.id === taskId 
-            //       ? { ...t, ...updates }
-            //       : t
-            //   )
-            // );
-            
-            // Mark that sync is needed
+            // Update project summary taskCount optimistically
+            setProjectSummaries(prev => 
+              prev.map(p => 
+                p.id === projectId 
+                  ? { 
+                      ...p, 
+                      taskCount: isCompleting 
+                        ? Math.max((p.taskCount || 0) - 1, 0)
+                        : (p.taskCount || 0) + 1
+                    }
+                  : p
+              )
+            );
+          }
+        }
+      }
+      
+      try {
+        let updated: Task;
+        
+        // Handle Do Now tasks differently
+        if (listId === 'do-now') {
+          await apiUpdateDoNowTask(taskId, updates);
+          updated = doNowTasks.find(t => t.id === taskId)!;
+          
+          // Mark that sync is needed for completion changes
+          if (updates.completedAt !== undefined) {
             setNeedsSync(true);
           }
         } else {
           updated = await apiUpdateTask(projectId, listId, taskId, updates);
           
-          // Optimistic update - update task in local state immediately
-          updateProjectData(projectId, lists =>
-            lists.map(l =>
-              l.id === listId
-                ? {
-                  ...l,
-                  tasks: l.tasks.map(t =>
-                    t.id === taskId
-                      ? { ...updated, subtasks: t.subtasks } // preserve existing subtasks
-                      : t
-                  ),
-                  // Update taskCount optimistically if completion status changed
-                  taskCount: updates.completedAt !== undefined 
-                    ? l.tasks.filter(t => 
-                        t.id === taskId 
-                          ? !updates.completedAt // if completing, don't count it
-                          : !t.completedAt // if not the updated task, check its completion
-                      ).length
-                    : l.taskCount,
-                }
-                : l
-            )
-          );
+          // For non-completion updates, update the task in local state
+          if (updates.completedAt === undefined) {
+            updateProjectData(projectId, lists =>
+              lists.map(l =>
+                l.id === listId
+                  ? {
+                    ...l,
+                    tasks: l.tasks.map(t =>
+                      t.id === taskId
+                        ? { ...updated, subtasks: t.subtasks }
+                        : t
+                    ),
+                  }
+                  : l
+              )
+            );
+          }
           
-                      // Update project summary taskCount optimistically if completion status changed
-            if (updates.completedAt !== undefined) {
-              setProjectSummaries(prev => 
-                prev.map(p => 
-                  p.id === projectId 
-                    ? { 
-                        ...p, 
-                        taskCount: updates.completedAt 
-                          ? Math.max((p.taskCount || 0) - 1, 0) // completing a task
-                          : (p.taskCount || 0) + 1 // uncompleting a task
-                      }
-                    : p
-                )
-              );
-              
-              // Update allTasks state for immediate due today/tomorrow updates
-              // setAllTasks(prev => 
-              //   prev.map(t => 
-              //     t.id === taskId 
-              //       ? { ...t, ...updates }
-              //       : t
-              //   )
-              // );
-              
-              // Mark that sync is needed
-              setNeedsSync(true);
-            }
+          // Mark that sync is needed for completion changes
+          if (updates.completedAt !== undefined) {
+            setNeedsSync(true);
+          }
         }
         
         return updated;
