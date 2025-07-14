@@ -23,4 +23,11 @@ dist-ssr
 *.sln
 *.sw?
 
+# Firebase and environment files
 /server/serviceAccountKey.json
+*.env
+.env
+.env.local
+.env.development
+.env.production
+.env.test
