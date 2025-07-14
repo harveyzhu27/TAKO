@@ -31,3 +31,7 @@ dist-ssr
 .env.development
 .env.production
 .env.test
+
+# Build directories (may contain sensitive data)
+/build/
+/dist/
