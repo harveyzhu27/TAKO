@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import HabitTracker from './HabitTracker.jsx';
 import DoNowList from './DoNowList.jsx';
+import NLP from './NLP.jsx';
 import './HomePage.css';
 
 const HomePageComponent = React.lazy(() => Promise.resolve({
@@ -13,7 +14,7 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
     // Debounced background refresh function
     const backgroundRefresh = useCallback(async (immediate = false) => {
       if (isRefreshing) return; // Prevent multiple simultaneous refreshes
-
+      
       // Clear any pending timeout
       if (refreshTimeout.current) {
         clearTimeout(refreshTimeout.current);
@@ -146,7 +147,6 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
     return (
       <div className="home-page">
         <div className="home-content">
-          <h1 className="home-title">Welcome to TAKO</h1>
           
           <div className="task-summary">
             <div className="task-counter">
@@ -166,10 +166,10 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
             </div>
             
             <div className="task-stats">
-              <div className="stat-item">
+              {/* <div className="stat-item">
                 <div className="stat-number">{doNowTaskCount}</div>
                 <div className="stat-label">Do Now</div>
-              </div>
+              </div> */}
               <div className="stat-item">
                 <div className="stat-number">{dueTodayCount}</div>
                 <div className="stat-label">Due Today</div>
@@ -184,7 +184,8 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
               </div>
             </div>
           </div>
-
+          
+          <div className="do-now-list-container">
           <DoNowList
             projectId="global"
             tasks={doNowTasks}
@@ -195,6 +196,9 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
             deleteSubtask={() => {}}
             updateSubtask={() => {}}
           />
+          <NLP/>
+
+          </div>
 
           <HabitTracker />
         </div>

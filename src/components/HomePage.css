@@ -508,3 +508,9 @@
     gap: 1.5rem;
   }
 } 
+
+.do-now-list-container {
+  display: flex;
+  flex-direction: row;
+  gap: 2rem;
+}

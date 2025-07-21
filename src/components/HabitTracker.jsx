@@ -41,7 +41,7 @@ function HabitTracker() {
   const generateDays = () => {
     const days = [];
     const today = new Date();
-    for (let i = 9; i >= 0; i--) {
+    for (let i = 13; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
       days.push(date);
@@ -119,9 +119,6 @@ function HabitTracker() {
 
   return (
     <div className="habit-tracker">
-      <div className="habit-header">
-        <h2>📊 Habit Tracker</h2>
-      </div>
 
       <div className="habit-grid">
         {/* Header row with dates */}

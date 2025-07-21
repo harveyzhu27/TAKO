@@ -167,10 +167,6 @@ function DoNowList({
 
   return (
     <div className="do-now-list">
-      <div className="do-now-header">
-        <h2>🚀 Do Now</h2>
-        <p className="do-now-subtitle">Immediate priorities</p>
-      </div>
 
       <SortableList
         items={sortedTasks}

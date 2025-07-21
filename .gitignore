@@ -25,6 +25,7 @@ dist-ssr
 
 # Firebase and environment files
 /server/serviceAccountKey.json
+/server/.env
 *.env
 .env
 .env.local

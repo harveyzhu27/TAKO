@@ -1,14 +1,17 @@
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
-import morgan from 'morgan';            // ← keep your imports grouped
+import morgan from 'morgan'; 
+import dotenv from 'dotenv';
 
 import projectsRouter from './routes/projects';
 import listsRouter    from './routes/lists';
 import tasksRouter    from './routes/tasks';
 import subtasksRouter from './routes/subtasks';
 import doNowRouter    from './routes/doNow';
+import nlpRouter      from './routes/nlp';
 
+dotenv.config();
 const app = express();
 
 // ─── Request logging ───────────────────────────────────────────────────────────
@@ -30,6 +33,7 @@ app.use('/projects', listsRouter);
 app.use('/projects', tasksRouter);
 app.use('/projects', subtasksRouter);
 app.use('/doNow', doNowRouter);
+app.use('/nlp', nlpRouter);
 
 // ─── Health check & error handling ────────────────────────────────────────────
 app.get('/', (req, res) => res.send('Backend is running!'));

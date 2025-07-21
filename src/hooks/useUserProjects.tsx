@@ -159,32 +159,6 @@ export default function useUserProjects() {
     // setAllTasks([]); // Removed - no longer needed
   }, [currentUser]);
 
-  useEffect(() => {
-    if (!currentUser) {
-      resetAll();
-      return;
-    }
-    setLoading(true);
-    setError(null);
-
-    (async () => {
-      try {
-        const summaries = await apiGetProjectSummaries();
-        setProjectSummaries(summaries);
-        // Don't automatically set currentProject - let App.jsx handle this based on localStorage
-        
-        // Load Do Now tasks and all tasks for due today/tomorrow display
-        await Promise.all([loadDoNowTasks(), loadAllTasks()]);
-      } catch (err: unknown) {
-        console.error("🔴 getProjectSummaries failed:", (err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    })();
-
-  }, [currentUser, resetAll, loadDoNowTasks]);
-
-
   // useEffect(() => { // GETTING AUTH TOKEN FOR DEBUGGING
   //   if (currentUser) {
   //     currentUser.getIdToken(true).then(token => {
@@ -354,17 +328,6 @@ export default function useUserProjects() {
       // Don't set error state for background sync failures
     }
   }, [needsSync, currentProject, refreshProjectSummaries]);
-
-  // Set up periodic background sync
-  useEffect(() => {
-    if (!currentProject) return;
-    
-    const interval = setInterval(() => {
-      debouncedSync();
-    }, 30000); // Sync every 30 seconds if needed
-    
-    return () => clearInterval(interval);
-  }, [debouncedSync, currentProject]);
 
   // Reset tasks completed today at midnight
   useEffect(() => {
