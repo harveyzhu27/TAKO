@@ -511,6 +511,7 @@
 
 .do-now-list-container {
   display: flex;
-  flex-direction: row;
+  width: 50%;
+  /* flex-direction: row; */
   gap: 2rem;
 }

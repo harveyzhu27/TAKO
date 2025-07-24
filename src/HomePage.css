@@ -1,0 +1,45 @@
+.do-now-thoughts-row {
+  display: flex;
+  flex-direction: row;
+  gap: 32px;
+  width: 100%;
+  margin: 0 auto 24px auto;
+  align-items: stretch;
+}
+
+.do-now-list-container {
+  flex: 0 0 480px;
+  max-width: 480px;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+}
+
+.thoughts-box-wrapper {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 220px;
+}
+
+.thoughts-box {
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  max-height: 320px;
+  box-sizing: border-box;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #d0d0d0;
+  font-size: 1rem;
+  background: #fafbfc;
+  resize: vertical;
+  outline: none;
+  transition: border 0.2s;
+}
+
+.thoughts-box:focus {
+  border: 1.5px solid #6c63ff;
+  background: #fff;
+} 

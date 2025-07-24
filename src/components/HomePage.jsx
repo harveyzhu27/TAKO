@@ -77,6 +77,14 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
       return () => clearInterval(interval);
     }, []);
 
+    // Persistent thoughts box state
+    const [thoughts, setThoughts] = useState(() => {
+      return localStorage.getItem('tako-thoughts') || '';
+    });
+    useEffect(() => {
+      localStorage.setItem('tako-thoughts', thoughts);
+    }, [thoughts]);
+
     // Calculate remaining tasks across all projects
     // taskCount already represents incomplete tasks (where completedAt is null)
     const remainingTasks = projectSummaries.reduce((sum, project) => {
@@ -185,21 +193,30 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
             </div>
           </div>
           
-          <div className="do-now-list-container">
-          <DoNowList
-            projectId="global"
-            tasks={doNowTasks}
-            addTask={addTask}
-            deleteTask={deleteTask}
-            updateTask={updateTask}
-            addSubtask={() => {}}
-            deleteSubtask={() => {}}
-            updateSubtask={() => {}}
-          />
-          <NLP/>
-
+          {/* Flex row for Do Now and Thoughts */}
+          <div className="do-now-thoughts-row">
+            <div className="do-now-list-container">
+              <DoNowList
+                projectId="global"
+                tasks={doNowTasks}
+                addTask={addTask}
+                deleteTask={deleteTask}
+                updateTask={updateTask}
+                addSubtask={() => {}}
+                deleteSubtask={() => {}}
+                updateSubtask={() => {}}
+              />
+            </div>
+            <div className="thoughts-box-wrapper">
+              <textarea
+                className="thoughts-box"
+                placeholder="Type your thoughts here..."
+                value={thoughts}
+                onChange={e => setThoughts(e.target.value)}
+                rows={8}
+              />
+            </div>
           </div>
-
           <HabitTracker />
         </div>
       </div>
