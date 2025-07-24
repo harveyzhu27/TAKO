@@ -159,6 +159,15 @@ export default function useUserProjects() {
     // setAllTasks([]); // Removed - no longer needed
   }, [currentUser]);
 
+  // Load Do Now tasks when user logs in or changes
+  useEffect(() => {
+    if (currentUser) {
+      loadDoNowTasks();
+    } else {
+      setDoNowTasks([]);
+    }
+  }, [currentUser, loadDoNowTasks]);
+
   // useEffect(() => { // GETTING AUTH TOKEN FOR DEBUGGING
   //   if (currentUser) {
   //     currentUser.getIdToken(true).then(token => {
@@ -763,6 +772,9 @@ const moveList = useCallback(
         if (listId === 'do-now') {
           await apiUpdateDoNowTask(taskId, updates);
           updated = doNowTasks.find(t => t.id === taskId)!;
+
+          // Refresh Do Now tasks from backend to ensure UI matches backend
+          await loadDoNowTasks();
           
           // Mark that sync is needed for completion changes
           if (updates.completedAt !== undefined) {
