@@ -41,20 +41,20 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
     }, [refreshProjectSummaries, isRefreshing, refreshTimeout]);
 
     // Set up automatic background refresh
-    useEffect(() => {
-      backgroundRefresh();
+    // useEffect(() => {
+    //   backgroundRefresh();
 
-      const intervalId = setInterval(() => {
-        backgroundRefresh();
-      }, 30000);
+    //   const intervalId = setInterval(() => {
+    //     backgroundRefresh();
+    //   }, 30000);
 
-      return () => {
-        clearInterval(intervalId);
-        if (refreshTimeout.current) {
-          clearTimeout(refreshTimeout.current);
-        }
-      };
-    }, [backgroundRefresh, refreshTimeout]);
+    //   return () => {
+    //     clearInterval(intervalId);
+    //     if (refreshTimeout.current) {
+    //       clearTimeout(refreshTimeout.current);
+    //     }
+    //   };
+    // }, [backgroundRefresh, refreshTimeout]);
 
     // Also refresh when user becomes visible (tab becomes active)
     useEffect(() => {
