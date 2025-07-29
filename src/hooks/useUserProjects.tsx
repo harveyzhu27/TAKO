@@ -134,28 +134,6 @@ export default function useUserProjects() {
 
 
 
-  // Calculate tasks completed today from all sources
-  const calculateTasksCompletedToday = useCallback(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Count completed Do Now tasks
-    const doNowCompleted = doNowTasks.filter(task => 
-      task.completedAt && new Date(task.completedAt) >= today
-    ).length;
-    
-    // Count completed project tasks
-    const projectCompleted = Object.values(projectData).flatMap(lists =>
-      lists.flatMap(list =>
-        list.tasks.filter(task => 
-          task.completedAt && new Date(task.completedAt) >= today
-        )
-      )
-    ).length;
-    
-    return doNowCompleted + projectCompleted;
-  }, [doNowTasks, projectData]);
-
   // Load Do Now tasks
   const loadDoNowTasks = useCallback(async () => {
     if (!currentUser) return;
@@ -166,12 +144,28 @@ export default function useUserProjects() {
       setDoNowTasks(tasksWithSubtasks);
       
       // Calculate tasks completed today from all sources
-      const completedToday = calculateTasksCompletedToday();
-      setTasksCompletedToday(completedToday);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Count completed Do Now tasks
+      const doNowCompleted = tasksWithSubtasks.filter(task => 
+        task.completedAt && new Date(task.completedAt) >= today
+      ).length;
+      
+      // Count completed project tasks
+      const projectCompleted = Object.values(projectData).flatMap(lists =>
+        lists.flatMap(list =>
+          list.tasks.filter(task => 
+            task.completedAt && new Date(task.completedAt) >= today
+          )
+        )
+      ).length;
+      
+      setTasksCompletedToday(doNowCompleted + projectCompleted);
     } catch (err: unknown) {
       console.error("🔴 loadDoNowTasks failed:", (err as Error).message);
     }
-  }, [currentUser, calculateTasksCompletedToday]);
+  }, [currentUser, projectData]);
 
   // Load all tasks across all projects for due today/tomorrow display
   // This is now optimized - we get due counts from project summaries instead
@@ -245,8 +239,24 @@ export default function useUserProjects() {
         setProjectData(prev => ({ ...prev, [currentProject]: listsWithTasks }));
         
         // Recalculate tasks completed today after loading project data
-        const completedToday = calculateTasksCompletedToday();
-        setTasksCompletedToday(completedToday);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        // Count completed Do Now tasks
+        const doNowCompleted = doNowTasks.filter(task => 
+          task.completedAt && new Date(task.completedAt) >= today
+        ).length;
+        
+        // Count completed project tasks
+        const projectCompleted = Object.values(projectData).flatMap(lists =>
+          lists.flatMap(list =>
+            list.tasks.filter(task => 
+              task.completedAt && new Date(task.completedAt) >= today
+            )
+          )
+        ).length;
+        
+        setTasksCompletedToday(doNowCompleted + projectCompleted);
       } catch (e: any) {
         setError(e.message ?? "Failed to load project data");
       } finally {
@@ -869,8 +879,24 @@ const moveList = useCallback(
           await loadDoNowTasks();
           
           // Recalculate tasks completed today after server response
-          const completedToday = calculateTasksCompletedToday();
-          setTasksCompletedToday(completedToday);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          
+          // Count completed Do Now tasks
+          const doNowCompleted = doNowTasks.filter(task => 
+            task.completedAt && new Date(task.completedAt) >= today
+          ).length;
+          
+          // Count completed project tasks
+          const projectCompleted = Object.values(projectData).flatMap(lists =>
+            lists.flatMap(list =>
+              list.tasks.filter(task => 
+                task.completedAt && new Date(task.completedAt) >= today
+              )
+            )
+          ).length;
+          
+          setTasksCompletedToday(doNowCompleted + projectCompleted);
           
           // Mark that sync is needed for completion changes
           if (updates.completedAt !== undefined) {
@@ -935,8 +961,24 @@ const moveList = useCallback(
             );
             
             // Recalculate tasks completed today after server response
-            const completedToday = calculateTasksCompletedToday();
-            setTasksCompletedToday(completedToday);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            // Count completed Do Now tasks
+            const doNowCompleted = doNowTasks.filter(task => 
+              task.completedAt && new Date(task.completedAt) >= today
+            ).length;
+            
+            // Count completed project tasks
+            const projectCompleted = Object.values(projectData).flatMap(lists =>
+              lists.flatMap(list =>
+                list.tasks.filter(task => 
+                  task.completedAt && new Date(task.completedAt) >= today
+                )
+              )
+            ).length;
+            
+            setTasksCompletedToday(doNowCompleted + projectCompleted);
           } else {
             // For non-completion updates, update the task in local state
             updateProjectData(projectId, lists =>
