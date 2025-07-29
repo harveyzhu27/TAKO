@@ -134,6 +134,28 @@ export default function useUserProjects() {
 
 
 
+  // Calculate tasks completed today from all sources
+  const calculateTasksCompletedToday = useCallback(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Count completed Do Now tasks
+    const doNowCompleted = doNowTasks.filter(task => 
+      task.completedAt && new Date(task.completedAt) >= today
+    ).length;
+    
+    // Count completed project tasks
+    const projectCompleted = Object.values(projectData).flatMap(lists =>
+      lists.flatMap(list =>
+        list.tasks.filter(task => 
+          task.completedAt && new Date(task.completedAt) >= today
+        )
+      )
+    ).length;
+    
+    return doNowCompleted + projectCompleted;
+  }, [doNowTasks, projectData]);
+
   // Load Do Now tasks
   const loadDoNowTasks = useCallback(async () => {
     if (!currentUser) return;
@@ -143,17 +165,13 @@ export default function useUserProjects() {
       const tasksWithSubtasks = tasks.map(task => ({ ...task, subtasks: [] }));
       setDoNowTasks(tasksWithSubtasks);
       
-      // Calculate tasks completed today
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const completedToday = tasks.filter(task => 
-        task.completedAt && new Date(task.completedAt) >= today
-      ).length;
+      // Calculate tasks completed today from all sources
+      const completedToday = calculateTasksCompletedToday();
       setTasksCompletedToday(completedToday);
     } catch (err: unknown) {
       console.error("🔴 loadDoNowTasks failed:", (err as Error).message);
     }
-  }, [currentUser]);
+  }, [currentUser, calculateTasksCompletedToday]);
 
   // Load all tasks across all projects for due today/tomorrow display
   // This is now optimized - we get due counts from project summaries instead
@@ -225,6 +243,10 @@ export default function useUserProjects() {
           })
         );
         setProjectData(prev => ({ ...prev, [currentProject]: listsWithTasks }));
+        
+        // Recalculate tasks completed today after loading project data
+        const completedToday = calculateTasksCompletedToday();
+        setTasksCompletedToday(completedToday);
       } catch (e: any) {
         setError(e.message ?? "Failed to load project data");
       } finally {
@@ -772,24 +794,60 @@ const moveList = useCallback(
                         ? { ...t, ...updates, subtasks: t.subtasks }
                         : t
                     ),
-                    taskCount: isCompleting 
-                      ? Math.max((l.taskCount || 0) - 1, 0)
-                      : (l.taskCount || 0) + 1,
+                    // Recalculate taskCount based on actual incomplete tasks
+                    taskCount: l.tasks.map(t =>
+                      t.id === taskId
+                        ? { ...t, ...updates, subtasks: t.subtasks }
+                        : t
+                    ).filter(t => !t.completedAt).length,
                   }
                   : l
               )
             );
             
-            // Update project summary taskCount optimistically
+            // Update task completion tracking for project tasks
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (isCompleting) {
+              const completedDate = new Date(updates.completedAt!);
+              if (completedDate >= today) {
+                setTasksCompletedToday(prev => prev + 1);
+              }
+            } else {
+              if (wasCompleted && currentTask?.completedAt) {
+                const completedDate = new Date(currentTask.completedAt);
+                if (completedDate >= today) {
+                  setTasksCompletedToday(prev => Math.max(prev - 1, 0));
+                }
+              }
+            }
+            
+            // Recalculate project summary taskCount based on all lists
+            const updatedLists = projectData[projectId]?.map(l =>
+              l.id === listId
+                ? {
+                  ...l,
+                  tasks: l.tasks.map(t =>
+                    t.id === taskId
+                      ? { ...t, ...updates, subtasks: t.subtasks }
+                      : t
+                  ),
+                  taskCount: l.tasks.map(t =>
+                    t.id === taskId
+                      ? { ...t, ...updates, subtasks: t.subtasks }
+                      : t
+                  ).filter(t => !t.completedAt).length,
+                }
+                : l
+            ) || [];
+            
+            const totalIncompleteTasks = updatedLists.reduce((sum, list) => sum + list.taskCount, 0);
+            
             setProjectSummaries(prev => 
               prev.map(p => 
                 p.id === projectId 
-                  ? { 
-                      ...p, 
-                      taskCount: isCompleting 
-                        ? Math.max((p.taskCount || 0) - 1, 0)
-                        : (p.taskCount || 0) + 1
-                    }
+                  ? { ...p, taskCount: totalIncompleteTasks }
                   : p
               )
             );
@@ -809,6 +867,10 @@ const moveList = useCallback(
 
           // Refresh Do Now tasks from backend to ensure UI matches backend
           await loadDoNowTasks();
+          
+          // Recalculate tasks completed today after server response
+          const completedToday = calculateTasksCompletedToday();
+          setTasksCompletedToday(completedToday);
           
           // Mark that sync is needed for completion changes
           if (updates.completedAt !== undefined) {
@@ -832,10 +894,49 @@ const moveList = useCallback(
                         ? { ...updated, subtasks: t.subtasks }
                         : t
                     ),
+                    // Recalculate taskCount based on incomplete tasks
+                    taskCount: l.tasks.map(t =>
+                      t.id === taskId
+                        ? { ...updated, subtasks: t.subtasks }
+                        : t
+                    ).filter(t => !t.completedAt).length,
                   }
                   : l
               )
             );
+            
+            // Recalculate project summary taskCount based on all lists
+            const updatedLists = projectData[projectId]?.map(l =>
+              l.id === listId
+                ? {
+                  ...l,
+                  tasks: l.tasks.map(t =>
+                    t.id === taskId
+                      ? { ...updated, subtasks: t.subtasks }
+                      : t
+                  ),
+                  taskCount: l.tasks.map(t =>
+                    t.id === taskId
+                      ? { ...updated, subtasks: t.subtasks }
+                      : t
+                  ).filter(t => !t.completedAt).length,
+                }
+                : l
+            ) || [];
+            
+            const totalIncompleteTasks = updatedLists.reduce((sum, list) => sum + list.taskCount, 0);
+            
+            setProjectSummaries(prev => 
+              prev.map(p => 
+                p.id === projectId 
+                  ? { ...p, taskCount: totalIncompleteTasks }
+                  : p
+              )
+            );
+            
+            // Recalculate tasks completed today after server response
+            const completedToday = calculateTasksCompletedToday();
+            setTasksCompletedToday(completedToday);
           } else {
             // For non-completion updates, update the task in local state
             updateProjectData(projectId, lists =>

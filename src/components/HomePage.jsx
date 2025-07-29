@@ -226,6 +226,19 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
                       target.setSelectionRange(start + 1, start + 1);
                     }, 0);
                   }
+                  // Handle enter key to add new line
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const target = e.target;
+                    const start = target.selectionStart;
+                    const end = target.selectionEnd;
+                    const newValue = thoughts.substring(0, start) + '\n' + thoughts.substring(end);
+                    setThoughts(newValue);
+                    // Set cursor position after the new line
+                    setTimeout(() => {
+                      target.setSelectionRange(start + 1, start + 1);
+                    }, 0);
+                  }
                 }}
                 rows={8}
                 maxLength={5000}
