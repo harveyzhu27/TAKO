@@ -23,6 +23,7 @@ function List({
     isRightmost,
     setToastError,
     isDoNowList = false,
+    loadingTasks = new Set(),
 }) {
     const [newTaskName, setTaskName] = useState("");
     const [newTaskDeadline, setTaskDeadline] = useState("");
@@ -190,6 +191,7 @@ function List({
                     deleteSubtask={deleteSubtask}
                     updateSubtask={updateSubtask}
                     setToastError={setToastError}
+                    loadingTasks={loadingTasks}
                 />
                 {
                     showAddTaskOptions ? (

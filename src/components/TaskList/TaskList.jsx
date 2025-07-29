@@ -15,6 +15,7 @@ function TaskList({
   // addSubtask,
   // deleteSubtask,
   // updateSubtask,
+  loadingTasks = new Set(),
 }) {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editName, setEditName] = useState('');
@@ -62,13 +63,21 @@ function TaskList({
 
   return (sortedTasks ?? []).map(task => {
     const isCollapsed = !!collapsedTasks[task.id] || !!task.completedAt;
+    const isTaskLoading = loadingTasks.has(task.id);
+    
     return (
-      <div className="task-block" key={`${listId}-${task.id}`}>
+      <div className={`task-block ${isTaskLoading ? 'task-loading' : ''}`} key={`${listId}-${task.id}`}>
+        {isTaskLoading && (
+          <div className="task-loading-overlay">
+            <div className="loading-spinner">⟳</div>
+          </div>
+        )}
         <div className="task-bar">
           <input
             className="task-checkbox"
             type="checkbox"
             checked={!!task.completedAt}
+            disabled={isTaskLoading}
             onChange={() => {
               const completedAt = task.completedAt ? null : Date.now();
               updateTask(projectId, listId, task.id, { completedAt })

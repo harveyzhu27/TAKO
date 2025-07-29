@@ -217,6 +217,102 @@ body {
   border-radius: 8px;
   margin: 20px;
 }
+
+/* New loading states for different sections */
+.do-now-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: var(--card-background);
+  border-radius: 8px;
+  margin: 10px 0;
+  gap: 0.5rem;
+}
+
+.project-content-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  gap: 0.5rem;
+  color: var(--text-color);
+}
+
+.task-loading {
+  position: relative;
+  opacity: 0.7;
+}
+
+.task-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  border-radius: 4px;
+}
+
+.sidebar-loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  gap: 0.5rem;
+  color: var(--text-color);
+  border-radius: 8px;
+}
+
+.initial-data-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: var(--card-background);
+  border-radius: 8px;
+  margin: 10px 0;
+  gap: 0.5rem;
+  color: var(--text-color);
+}
+
+.home-initial-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: var(--card-background);
+  border-radius: 8px;
+  margin: 20px;
+  gap: 0.5rem;
+  color: var(--text-color);
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+  font-size: 1.2em;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 .extra-taskbar {
   width: 60px;
   background-color: var(--card-background);

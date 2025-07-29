@@ -13,7 +13,9 @@ const ProjectContentComponent = React.lazy(() => Promise.resolve({
     addTask,
     deleteTask,
     updateTask,
-    setToastError
+    setToastError,
+    loadingProjectContent = false,
+    loadingTasks = new Set()
   }) {
     // Memoize sorted lists to prevent unnecessary re-computations
     const sortedLists = useMemo(() => {
@@ -22,6 +24,12 @@ const ProjectContentComponent = React.lazy(() => Promise.resolve({
 
     return (
       <div className="list-task-container" role="region" aria-label="Project lists">
+        {loadingProjectContent && (
+          <div className="project-content-loading-overlay">
+            <div className="loading-spinner">⟳</div>
+            <span>Loading project content...</span>
+          </div>
+        )}
         {sortedLists.map((list, idx) => (
           <div key={list.id} className="list-wrapper">
             <List
@@ -42,6 +50,7 @@ const ProjectContentComponent = React.lazy(() => Promise.resolve({
               isLeftmost={idx === 0}
               isRightmost={idx === lists.length - 1}
               setToastError={setToastError}
+              loadingTasks={loadingTasks}
             />
           </div>
         ))}

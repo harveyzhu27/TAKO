@@ -16,7 +16,9 @@ function ProjectTabs({
   loadingProjects = new Set(),
   isProjectLoading,
   getProjectError,
-  clearProjectError
+  clearProjectError,
+  loadingSidebar = false,
+  loadingInitialData = false
 }) {
   const [newProjectName, setProjectName] = useState("");
   const [showAddOptions, setShowAddOption] = useState(false);
@@ -36,6 +38,18 @@ function ProjectTabs({
 
   return (
     <div className="project-tabs-container">
+      {loadingSidebar && (
+        <div className="sidebar-loading-overlay">
+          <div className="loading-spinner">⟳</div>
+          <span>Loading sidebar...</span>
+        </div>
+      )}
+      {loadingInitialData && (
+        <div className="initial-data-loading">
+          <div className="loading-spinner">⟳</div>
+          <span>Loading projects...</span>
+        </div>
+      )}
       <button
         className={!currentProject ? 'active-home-tab' : 'home-tab'}
         onClick={() => {
@@ -44,6 +58,7 @@ function ProjectTabs({
         }}
         aria-label="Go to home page"
         aria-pressed={!currentProject}
+        disabled={loadingSidebar || loadingInitialData}
       >
         Home
       </button>
@@ -103,6 +118,7 @@ function ProjectTabs({
                 aria-label={`${project.name} project`}
                 aria-pressed={currentProject === project.id}
                 aria-describedby={`project-status-${project.id}`}
+                disabled={loadingSidebar || loadingInitialData}
               >
                 {project.name}
                 {loadingProjects && loadingProjects.has(project.id) && (
@@ -165,6 +181,7 @@ function ProjectTabs({
             setCurrentProject(null);
             setShowAddOption(true);
           }}
+          disabled={loadingSidebar || loadingInitialData}
         >
           Add
         </button>

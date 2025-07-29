@@ -53,6 +53,13 @@ export default function useUserProjects() {
   const [tasksCompletedToday, setTasksCompletedToday] = useState(0); // Track tasks completed today
   // Removed allTasks state - we now get due counts from project summaries for better performance
 
+  // Separate loading states for different sections
+  const [loadingDoNow, setLoadingDoNow] = useState(false);
+  const [loadingProjectContent, setLoadingProjectContent] = useState(false);
+  const [loadingSidebar, setLoadingSidebar] = useState(false);
+  const [loadingTasks, setLoadingTasks] = useState<Set<string>>(new Set()); // Track loading state per task
+  const [loadingInitialData, setLoadingInitialData] = useState(false); // Track initial data loading
+
   // Add a refreshKey for manual/triggered refreshes
   const [refreshKey, setRefreshKey] = useState(0);
   // Function to force a full refresh from backend
@@ -234,7 +241,7 @@ export default function useUserProjects() {
   // Projects CRUD
   const addProject = useCallback(async (name: string) => {
     console.log("✏️  addProject(", name, ")");
-    setLoading(true);
+    setLoadingSidebar(true);
     setError(null);
     try {
       const { project: newProject, list: defaultList } = await apiCreateProject(name);
@@ -262,12 +269,12 @@ export default function useUserProjects() {
       setError(e.message ?? "Unable to create project");
       throw e;
     } finally {
-      setLoading(false);
+      setLoadingSidebar(false);
     }
   }, []);
 
   const deleteProject = useCallback(async (projectId: string) => {
-    setLoading(true);
+    setLoadingSidebar(true);
     setError(null);
     try {
       await apiDeleteProject(projectId);
@@ -286,12 +293,12 @@ export default function useUserProjects() {
       setError(e.message ?? "Unable to delete project");
       throw e;
     } finally {
-      setLoading(false);
+      setLoadingSidebar(false);
     }
   }, [projectSummaries]);
 
   const updateProject = useCallback(async (projectId: string, updates: Partial<Project>) => {
-    setLoading(true);
+    setLoadingSidebar(true);
     try {
       const updatedProject = await apiUpdateProject(projectId, updates);
       const updatedSummary: ProjectSummary = {
@@ -309,7 +316,7 @@ export default function useUserProjects() {
       setError(e.message ?? "Unable to update project");
       throw e;
     } finally {
-      setLoading(false);
+      setLoadingSidebar(false);
     }
   }, []);
 
@@ -321,6 +328,24 @@ export default function useUserProjects() {
       console.error("🔴 refreshProjectSummaries failed:", (err as Error).message);
     }
   }, []);
+
+  // Load initial project summaries when user logs in
+  useEffect(() => {
+    if (currentUser) {
+      setLoadingInitialData(true);
+      refreshProjectSummaries()
+        .catch(err => {
+          console.error("🔴 Initial project summaries load failed:", err);
+          setError("Failed to load projects");
+        })
+        .finally(() => {
+          setLoadingInitialData(false);
+        });
+    } else {
+      setProjectSummaries([]);
+      setLoadingInitialData(false);
+    }
+  }, [currentUser, refreshProjectSummaries]);
 
   // Debounced background sync - runs periodically to sync with backend
   const debouncedSync = useCallback(async () => {
@@ -408,7 +433,7 @@ export default function useUserProjects() {
   // Lists CRUD
   // Efficiently update local state after list changes
   const addList = useCallback(async (projectId: string, name: string) => {
-    setLoading(true);
+    setLoadingProjectContent(true);
     setError(null);
     try {
       const newList = await apiCreateList(projectId, name);
@@ -422,13 +447,13 @@ export default function useUserProjects() {
       setError(e.message ?? "Unable to create list");
       throw e;
     } finally {
-      setLoading(false);
+      setLoadingProjectContent(false);
     }
   }, [updateProjectData, refreshProjectSummaries]);
 
   const deleteList = useCallback(
     async (projectId: string, listId: string) => {
-      setLoading(true);
+      setLoadingProjectContent(true);
       setError(null);
       try {
         await apiDeleteList(projectId, listId);
@@ -440,7 +465,7 @@ export default function useUserProjects() {
         setError(e.message ?? "Unable to delete list");
         throw e;
       } finally {
-        setLoading(false);
+        setLoadingProjectContent(false);
       }
     },
     [updateProjectData, refreshProjectSummaries]
@@ -448,7 +473,7 @@ export default function useUserProjects() {
 
   const updateList = useCallback(
     async (projectId: string, listId: string, name: string) => {
-      setLoading(true);
+      setLoadingProjectContent(true);
       setError(null);
       try {
         const updated = await apiUpdateList(projectId, listId, name);
@@ -468,7 +493,7 @@ export default function useUserProjects() {
         setError(e.message ?? "Unable to update list");
         throw e;
       } finally {
-        setLoading(false);
+        setLoadingProjectContent(false);
       }
     },
     [updateProjectData]
@@ -477,7 +502,7 @@ export default function useUserProjects() {
   // MOVE a list left or right
 const moveList = useCallback(
   async (projectId: string, listId: string, direction: "left" | "right") => {
-    setLoading(true);
+    setLoadingProjectContent(true);
     setError(null);
     try {
       const lists = projectData[projectId] ?? [];
@@ -495,20 +520,12 @@ const moveList = useCallback(
     ]);
 
       const updatedLists = await apiGetLists(projectId);
-
-      updateProjectData(projectId, old =>
-        updatedLists
-          .sort((a, b) => a.order - b.order)
-          .map(l => ({
-            ...l,
-            tasks: old.find(orig => orig.id === l.id)?.tasks ?? []
-          }))
-      );
+      setProjectData(prev => ({ ...prev, [projectId]: updatedLists }));
     } catch (e: any) {
       setError(e.message ?? "Unable to move list");
       throw e;
     } finally {
-      setLoading(false);
+      setLoadingProjectContent(false);
     }
   },
   [projectData, updateProjectData]
@@ -524,6 +541,13 @@ const moveList = useCallback(
       dueDate?: number
     ) => {
       setError(null);
+      
+      // Use specific loading states instead of global loading
+      if (listId === 'do-now') {
+        setLoadingDoNow(true);
+      } else {
+        setLoadingProjectContent(true);
+      }
       
       // Create optimistic task immediately for instant UI feedback
       const optimisticTaskId = `temp-${Date.now()}-${Math.random()}`;
@@ -653,6 +677,12 @@ const moveList = useCallback(
         
         setError(e.message ?? "Unable to create task");
         throw e; // Re-throw so UI can handle the error
+      } finally {
+        if (listId === 'do-now') {
+          setLoadingDoNow(false);
+        } else {
+          setLoadingProjectContent(false);
+        }
       }
     },
     [updateProjectData, currentUser]
@@ -842,7 +872,13 @@ const moveList = useCallback(
   // DELETE a task
   const deleteTask = useCallback(
     async (projectId: string, listId: string, taskId: string) => {
-      setLoading(true);
+      // Use specific loading states instead of global loading
+      if (listId === 'do-now') {
+        setLoadingDoNow(true);
+      } else {
+        setLoadingProjectContent(true);
+      }
+      setLoadingTasks(prev => new Set(prev).add(taskId));
       setError(null);
       try {
         // Handle Do Now tasks differently
@@ -915,7 +951,16 @@ const moveList = useCallback(
         setError(e.message ?? "Unable to delete task");
         throw e;
       } finally {
-        setLoading(false);
+        if (listId === 'do-now') {
+          setLoadingDoNow(false);
+        } else {
+          setLoadingProjectContent(false);
+        }
+        setLoadingTasks(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(taskId);
+          return newSet;
+        });
       }
     },
     [updateProjectData]
@@ -1026,8 +1071,8 @@ const moveList = useCallback(
 
   return {
     // core selectors
-    projectSummaries,      // list of all projects’ metadata
-    currentProject,        // the active project’s ID
+    projectSummaries,      // list of all projects' metadata
+    currentProject,        // the active project's ID
     setCurrentProject,     // to switch projects
 
     // convenience views of the current project
@@ -1042,6 +1087,13 @@ const moveList = useCallback(
     loading,
     loadingProjects,
     error,
+
+    // Separate loading states for different sections
+    loadingDoNow,
+    loadingProjectContent,
+    loadingSidebar,
+    loadingTasks,
+    loadingInitialData,
 
     // project‐level actions
     addProject,

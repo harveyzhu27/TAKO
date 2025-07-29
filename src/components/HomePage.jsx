@@ -8,7 +8,20 @@ import { validateThoughts } from '../utils/validation.js';
 import './HomePage.css';
 
 const HomePageComponent = React.lazy(() => Promise.resolve({
-  default: function HomePageComponent({ projectSummaries, refreshProjectSummaries, doNowTasks = [], doNowTaskCount = 0, tasksCompletedToday = 0, setCurrentProject, addTask, deleteTask, updateTask }) {
+  default: function HomePageComponent({ 
+    projectSummaries, 
+    refreshProjectSummaries, 
+    doNowTasks = [], 
+    doNowTaskCount = 0, 
+    tasksCompletedToday = 0, 
+    setCurrentProject, 
+    addTask, 
+    deleteTask, 
+    updateTask,
+    loadingDoNow = false,
+    loadingTasks = new Set(),
+    loadingInitialData = false
+  }) {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
     const currentTime = useCurrentTime(); // Use custom hook for efficient time updates
@@ -128,6 +141,13 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
       <div className="home-page">
         <div className="home-content">
           
+          {loadingInitialData && (
+            <div className="home-initial-loading">
+              <div className="loading-spinner">⟳</div>
+              <span>Loading project data...</span>
+            </div>
+          )}
+          
           <div className="task-summary" role="region" aria-label="Task summary">
             <div className="task-counter">
               <div className="task-number" aria-live="polite">
@@ -169,6 +189,12 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
           {/* Flex row for Do Now and Thoughts */}
           <div className="do-now-thoughts-row">
             <div className="do-now-list-container">
+              {loadingDoNow && (
+                <div className="do-now-loading">
+                  <div className="loading-spinner">⟳</div>
+                  <span>Loading Do Now tasks...</span>
+                </div>
+              )}
               <DoNowList
                 projectId="global"
                 tasks={doNowTasks}
@@ -186,6 +212,21 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
                 placeholder="Type your thoughts here..."
                 value={thoughts}
                 onChange={handleThoughtsChange}
+                onKeyDown={(e) => {
+                  // Handle space key explicitly
+                  if (e.key === ' ') {
+                    e.preventDefault();
+                    const target = e.target;
+                    const start = target.selectionStart;
+                    const end = target.selectionEnd;
+                    const newValue = thoughts.substring(0, start) + ' ' + thoughts.substring(end);
+                    setThoughts(newValue);
+                    // Set cursor position after the space
+                    setTimeout(() => {
+                      target.setSelectionRange(start + 1, start + 1);
+                    }, 0);
+                  }
+                }}
                 rows={8}
                 maxLength={5000}
                 aria-label="Thoughts and notes"

@@ -38,6 +38,13 @@ export default function App() {
     loadingProjects,
     error,
 
+    // Separate loading states for different sections
+    loadingDoNow,
+    loadingProjectContent,
+    loadingSidebar,
+    loadingTasks,
+    loadingInitialData,
+
     // project‐level actions
     addProject,
     updateProject,
@@ -168,10 +175,6 @@ export default function App() {
     );
   }
 
-  if (loading) {
-    return <div className="loading">Loading…</div>;
-  }
-
   return (
     <ErrorBoundary>
       <DragDropProvider>
@@ -179,22 +182,24 @@ export default function App() {
           <div className={`app-content ${!currentProject ? 'home-screen' : ''}`}>
             <div className="sidebar">
               <div className="project-tab-list">
-                              <ProjectTabs
-                projects={[...projectSummaries].sort((a, b) => a.order - b.order)}
-                currentProject={currentProject}
-                setCurrentProject={handleSetCurrentProject}
-                addProject={createProjectOptimistic}
-                deleteProject={deleteProject}
-                updateProject={updateProjectOptimistic}
-                forceEditProjectId={forceEditProjectId}
-                setForceEditProjectId={setForceEditProjectId}
-                setToastError={setToastError}
-                projectData={projectData}
-                loadingProjects={loadingProjects}
-                isProjectLoading={isProjectLoading}
-                getProjectError={getProjectError}
-                clearProjectError={clearProjectError}
-              />
+                <ProjectTabs
+                  projects={[...projectSummaries].sort((a, b) => a.order - b.order)}
+                  currentProject={currentProject}
+                  setCurrentProject={handleSetCurrentProject}
+                  addProject={createProjectOptimistic}
+                  deleteProject={deleteProject}
+                  updateProject={updateProjectOptimistic}
+                  forceEditProjectId={forceEditProjectId}
+                  setForceEditProjectId={setForceEditProjectId}
+                  setToastError={setToastError}
+                  projectData={projectData}
+                  loadingProjects={loadingProjects}
+                  isProjectLoading={isProjectLoading}
+                  getProjectError={getProjectError}
+                  clearProjectError={clearProjectError}
+                  loadingSidebar={loadingSidebar}
+                  loadingInitialData={loadingInitialData}
+                />
               </div>
               <div className="user-info">
                 Logged in as <strong>{currentUser.email}</strong>
@@ -217,6 +222,9 @@ export default function App() {
                     addTask={addTask}
                     deleteTask={deleteTask}
                     updateTask={updateTask}
+                    loadingDoNow={loadingDoNow}
+                    loadingTasks={loadingTasks}
+                    loadingInitialData={loadingInitialData}
                   />
                 ) : (
                   <ProjectContent
@@ -230,6 +238,8 @@ export default function App() {
                     deleteTask={deleteTask}
                     updateTask={updateTask}
                     setToastError={setToastError}
+                    loadingProjectContent={loadingProjectContent}
+                    loadingTasks={loadingTasks}
                   />
                 )}
               </main>
