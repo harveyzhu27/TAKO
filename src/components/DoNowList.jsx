@@ -1,5 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { SortableList } from './DragDrop.jsx';
+import { useCurrentTime } from '../hooks/useCurrentTime.js';
+import { useClickOutside } from '../hooks/useClickOutside.js';
+import { formatDeadline, getDeadlineClass } from '../utils/dateUtils.js';
 import './DoNowList.css';
 
 function DoNowList({
@@ -19,54 +22,15 @@ function DoNowList({
   const [editName, setEditName] = useState('');
   const [editDeadline, setEditDeadline] = useState('');
   const [menuOpenId, setMenuOpenId] = useState(null);
-  const [now, setNow] = useState(Date.now()); // For live updates
+  const currentTime = useCurrentTime(); // Use custom hook for efficient time updates
 
-  const menuRef = useRef(null);
-  const editRef = useRef(null);
-  const taskInputRef = useRef(null);
-
-  // Timer to update 'now' every minute for live due date updates
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Close the task menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = e => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpenId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Exit edit mode when clicking outside the edit inputs
-  useEffect(() => {
-    const handleClickOutsideEdit = e => {
-      if (editingTaskId && editRef.current && !editRef.current.contains(e.target)) {
-        setEditingTaskId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutsideEdit);
-    return () => document.removeEventListener('mousedown', handleClickOutsideEdit);
-  }, [editingTaskId]);
-
-  // Close add task input when clicking outside
-  useEffect(() => {
-    if (!showAddTaskOptions) return;
-
-    function handleClickOutside(e) {
-      if (taskInputRef.current && !taskInputRef.current.contains(e.target)) {
-        setShowAddTaskOption(false);
-        setNewTaskName("");
-        setNewTaskDeadline("");
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+  // Use custom hooks for click outside handling
+  const menuRef = useClickOutside(() => setMenuOpenId(null));
+  const editRef = useClickOutside(() => setEditingTaskId(null), [editingTaskId]);
+  const taskInputRef = useClickOutside(() => {
+    setShowAddTaskOption(false);
+    setNewTaskName("");
+    setNewTaskDeadline("");
   }, [showAddTaskOptions]);
 
   function sortTasks(arr) {
@@ -89,46 +53,13 @@ function DoNowList({
     console.log(`Reordering task from index ${fromIndex} to ${toIndex}`);
   };
 
-  // Format deadline using days from now with real-time tracking
-  function formatDeadline(daysFromNow) {
-    if (daysFromNow === null || daysFromNow === undefined || daysFromNow === '') return '';
-    
-    // Ensure daysFromNow is a number
-    const days = typeof daysFromNow === 'string' ? Number(daysFromNow) : daysFromNow;
-    
-    // Calculate the actual due date based on days from now
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(today);
-    dueDate.setDate(today.getDate() + days);
-    
-    // Calculate days difference from today
-    const nowDate = new Date(now);
-    nowDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.floor((dueDate - nowDate) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return 'Overdue';
-    if (diffDays === 0) return 'Due Today';
-    if (diffDays === 1) return 'Due Tomorrow';
-    return `Due in ${diffDays} days`;
-  }
-
-  // Helper for color class
-  function deadlineClass(daysFromNow) {
-    if (daysFromNow === null || daysFromNow === undefined || daysFromNow === '') return '';
-    const days = typeof daysFromNow === 'string' ? Number(daysFromNow) : daysFromNow;
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(today);
-    dueDate.setDate(today.getDate() + days);
-    const nowDate = new Date(now);
-    nowDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.floor((dueDate - nowDate) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return 'overdue';
-    if (diffDays === 0) return 'due-today';
-    if (diffDays === 1) return 'due-tomorrow';
-    return '';
-  }
+  // Memoized date calculations using utility functions
+  const memoizedDateCalculations = useMemo(() => {
+    return {
+      formatDeadline: (daysFromNow) => formatDeadline(daysFromNow, currentTime),
+      deadlineClass: (daysFromNow) => getDeadlineClass(daysFromNow, currentTime)
+    };
+  }, [currentTime]);
 
   const sortedTasks = sortTasks(tasks);
 
@@ -150,8 +81,8 @@ function DoNowList({
           {task.name}
         </span>
         {task.dueDate && (
-          <span className={`task-deadline ${deadlineClass(task.dueDate)}`}>
-            {formatDeadline(task.dueDate)}
+          <span className={`task-deadline ${memoizedDateCalculations.deadlineClass(task.dueDate)}`}>
+            {memoizedDateCalculations.formatDeadline(task.dueDate)}
           </span>
         )}
       </div>

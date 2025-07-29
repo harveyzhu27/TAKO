@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside.js';
 import './HabitTracker.css';
 
 function HabitTracker() {
@@ -14,28 +15,18 @@ function HabitTracker() {
   const [editName, setEditName] = useState('');
   const [showAddHabit, setShowAddHabit] = useState(false);
   const [newHabitName, setNewHabitName] = useState('');
-  const editRef = useRef(null);
-  const addHabitRef = useRef(null);
+  
+  // Use custom hooks for click outside handling
+  const editRef = useClickOutside(() => setEditingHabitId(null), [editingHabitId]);
+  const addHabitRef = useClickOutside(() => {
+    setShowAddHabit(false);
+    setNewHabitName('');
+  }, [showAddHabit]);
 
   // Save habits to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('habits', JSON.stringify(habits));
   }, [habits]);
-
-  // Close edit mode when clicking outside
-  useEffect(() => {
-    const handleClickOutside = e => {
-      if (editingHabitId && editRef.current && !editRef.current.contains(e.target)) {
-        setEditingHabitId(null);
-      }
-      if (showAddHabit && addHabitRef.current && !addHabitRef.current.contains(e.target)) {
-        setShowAddHabit(false);
-        setNewHabitName('');
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [editingHabitId, showAddHabit]);
 
   // Generate last 10 days
   const generateDays = () => {

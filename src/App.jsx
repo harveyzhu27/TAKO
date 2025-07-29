@@ -5,8 +5,10 @@ import SignIn from "./components/SignIn.jsx";
 
 import ProjectTabs from "./components/ProjectTabs/ProjectTabs.jsx";
 import useUserProjects from "./hooks/useUserProjects.jsx";
+import useProjectOperations from "./hooks/useProjectOperations.js";
 import HomePage from "./components/HomePage.jsx";
 import ProjectContent from "./components/ProjectContent.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
 
 import { DragDropProvider } from "./components/DragDrop.jsx";
 // import { ProjectSummary } from "../shared/models/ProjectModel.ts"
@@ -58,6 +60,22 @@ export default function App() {
     // updateSubtask,
     // deleteSubtask,
   } = useUserProjects();
+
+  // Use optimistic project operations
+  const projectActions = {
+    addProject,
+    updateProject,
+    deleteProject
+  };
+  
+  const {
+    updateProjectOptimistic,
+    deleteProjectOptimistic,
+    createProjectOptimistic,
+    isProjectLoading,
+    getProjectError,
+    clearProjectError
+  } = useProjectOperations(projectActions);
 
   // Load home screen preference from localStorage
   useEffect(() => {
@@ -115,7 +133,9 @@ export default function App() {
           const oldDesc = (fullProject?.description ?? "").trim();
           const newDesc = descBuffer.trim();
           if (newDesc !== oldDesc) {
-            updateProject(currentProject, { description: newDesc });
+            updateProjectOptimistic(currentProject, { description: newDesc }).catch(err => {
+              setToastError(err.message || "Failed to update project description");
+            });
           }
         }
         setShowDescription(false);
@@ -127,7 +147,7 @@ export default function App() {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [showDescription, descBuffer, currentProject, updateProject]);
+  }, [showDescription, descBuffer, currentProject, updateProjectOptimistic, fullProject?.description, setToastError]);
 
   if (!currentUser) {
     return (
@@ -153,63 +173,67 @@ export default function App() {
   }
 
   return (
-    <DragDropProvider>
-      <div className="app-wrapper">
-        <div className={`app-content ${!currentProject ? 'home-screen' : ''}`}>
-          <div className="sidebar">
-            <div className="project-tab-list">
-              <ProjectTabs
+    <ErrorBoundary>
+      <DragDropProvider>
+        <div className="app-wrapper">
+          <div className={`app-content ${!currentProject ? 'home-screen' : ''}`}>
+            <div className="sidebar">
+              <div className="project-tab-list">
+                              <ProjectTabs
                 projects={[...projectSummaries].sort((a, b) => a.order - b.order)}
                 currentProject={currentProject}
                 setCurrentProject={handleSetCurrentProject}
-                addProject={addProject}
+                addProject={createProjectOptimistic}
                 deleteProject={deleteProject}
-                updateProject={updateProject}
+                updateProject={updateProjectOptimistic}
                 forceEditProjectId={forceEditProjectId}
                 setForceEditProjectId={setForceEditProjectId}
                 setToastError={setToastError}
                 projectData={projectData}
                 loadingProjects={loadingProjects}
+                isProjectLoading={isProjectLoading}
+                getProjectError={getProjectError}
+                clearProjectError={clearProjectError}
               />
+              </div>
+              <div className="user-info">
+                Logged in as <strong>{currentUser.email}</strong>
+                <button className="logout-button" onClick={logOut}>
+                  Log Out
+                </button>
+              </div>
             </div>
-            <div className="user-info">
-              Logged in as <strong>{currentUser.email}</strong>
-              <button className="logout-button" onClick={logOut}>
-                Log Out
-              </button>
-            </div>
-          </div>
 
-          <div className="main-section">
-            <main className="main-panel">
-              {!currentProject ? (
-                            <HomePage
-              projectSummaries={projectSummaries}
-              refreshProjectSummaries={refreshProjectSummaries}
-              doNowTasks={doNowTasks}
-              doNowTaskCount={doNowTaskCount}
-              tasksCompletedToday={tasksCompletedToday}
-              setCurrentProject={handleSetCurrentProject}
-              addTask={addTask}
-              deleteTask={deleteTask}
-              updateTask={updateTask}
-            />
-              ) : (
-                <ProjectContent
-                  currentProject={currentProject}
-                  lists={lists}
-                  addList={addList}
-                  deleteList={deleteList}
-                  updateList={updateList}
-                  moveList={moveList}
-                  addTask={addTask}
-                  deleteTask={deleteTask}
-                  updateTask={updateTask}
-                  setToastError={setToastError}
-                />
-              )}
-            </main>
-          </div>
+            <div className="main-section">
+              <main className="main-panel">
+                {!currentProject ? (
+                  <HomePage
+                    projectSummaries={projectSummaries}
+                    refreshProjectSummaries={refreshProjectSummaries}
+                    doNowTasks={doNowTasks}
+                    doNowTaskCount={doNowTaskCount}
+                    tasksCompletedToday={tasksCompletedToday}
+                    setCurrentProject={handleSetCurrentProject}
+                    addTask={addTask}
+                    deleteTask={deleteTask}
+                    updateTask={updateTask}
+                  />
+                ) : (
+                  <ProjectContent
+                    currentProject={currentProject}
+                    lists={lists}
+                    addList={addList}
+                    deleteList={deleteList}
+                    updateList={updateList}
+                    moveList={moveList}
+                    addTask={addTask}
+                    deleteTask={deleteTask}
+                    updateTask={updateTask}
+                    setToastError={setToastError}
+                  />
+                )}
+              </main>
+            </div>
 
           <div className="extra-taskbar">
             {currentProject && (
@@ -229,50 +253,61 @@ export default function App() {
                 </button>
                 <button
                   title="Move Up"
+                  disabled={isProjectLoading(currentProject, 'update')}
                   onClick={async () => {
                     try {
-                      await updateProject(currentProject, { move: "up" });
+                      await updateProjectOptimistic(currentProject, { move: "up" });
                     } catch (err) {
-                      console.error("Failed to move project up", err);
+                      setToastError(err.message || "Failed to move project up");
                     }
                   }}
+                  aria-label="Move project up"
                 >
-                  ⬆️
+                  {isProjectLoading(currentProject, 'update') ? '⏳' : '⬆️'}
                 </button>
 
                 <button
                   title="Move Down"
+                  disabled={isProjectLoading(currentProject, 'update')}
                   onClick={async () => {
                     try {
-                      await updateProject(currentProject, { move: "down" });
+                      await updateProjectOptimistic(currentProject, { move: "down" });
                     } catch (err) {
-                      console.error("Failed to move project down", err);
+                      setToastError(err.message || "Failed to move project down");
                     }
                   }}
+                  aria-label="Move project down"
                 >
-                  ⬇️
+                  {isProjectLoading(currentProject, 'update') ? '⏳' : '⬇️'}
                 </button>
 
                 <button
                   title="Add List"
+                  disabled={isProjectLoading(currentProject, 'update')}
                   onClick={() => addList(currentProject, "Untitled")}
+                  aria-label="Add new list to project"
                 >
                   ➕
                 </button>
                 <button
                   title="Delete Project"
-                  onClick={() => {
+                  disabled={isProjectLoading(currentProject, 'delete')}
+                  onClick={async () => {
                     const currentIndex = projectSummaries.findIndex(p => p.id === currentProject);
                     const sorted = [...projectSummaries].sort((a, b) => a.order - b.order);
                     const nextProject = sorted[currentIndex + 1] || sorted[currentIndex - 1];
 
-                    deleteProject(currentProject).then(() => {
+                    try {
+                      await deleteProjectOptimistic(currentProject);
                       if (nextProject) handleSetCurrentProject(nextProject.id);
                       else handleSetCurrentProject(null);
-                    });
+                    } catch (err) {
+                      setToastError(err.message || "Failed to delete project");
+                    }
                   }}
+                  aria-label="Delete current project"
                 >
-                  🗑️
+                  {isProjectLoading(currentProject, 'delete') ? '⏳' : '🗑️'}
                 </button>
               </div>
             )}
@@ -283,15 +318,31 @@ export default function App() {
                   autoFocus
                   value={descBuffer}
                   onChange={(e) => setDescBuffer(e.target.value)}
-                  onBlur={() => {
+                  onBlur={async () => {
                     if (
                       currentProject &&
                       descBuffer.trim() !== (fullProject?.description ?? "").trim()
                     ) {
-                      updateProject(currentProject, { description: descBuffer });
+                      try {
+                        await updateProjectOptimistic(currentProject, { description: descBuffer });
+                      } catch (err) {
+                        setToastError(err.message || "Failed to update project description");
+                      }
                     }
                     setShowDescription(false);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.ctrlKey) {
+                      e.preventDefault();
+                      e.target.blur();
+                    }
+                    if (e.key === 'Escape') {
+                      setShowDescription(false);
+                    }
+                  }}
+                  placeholder="Enter project description..."
+                  maxLength={1000}
+                  aria-label="Project description"
                 />
               </div>
             )}
@@ -305,5 +356,7 @@ export default function App() {
 
       </div>
     </DragDropProvider>
+    </ErrorBoundary>
   );
 }
+

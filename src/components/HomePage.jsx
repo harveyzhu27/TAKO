@@ -1,14 +1,17 @@
-import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import React, { useEffect, useState, useCallback, useRef, Suspense, useMemo } from 'react';
 import HabitTracker from './HabitTracker.jsx';
 import DoNowList from './DoNowList.jsx';
 import NLP from './NLP.jsx';
+import { useCurrentTime } from '../hooks/useCurrentTime.js';
+import { formatDeadline, getDeadlineClass } from '../utils/dateUtils.js';
+import { validateThoughts } from '../utils/validation.js';
 import './HomePage.css';
 
 const HomePageComponent = React.lazy(() => Promise.resolve({
   default: function HomePageComponent({ projectSummaries, refreshProjectSummaries, doNowTasks = [], doNowTaskCount = 0, tasksCompletedToday = 0, setCurrentProject, addTask, deleteTask, updateTask }) {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
-    const [now, setNow] = useState(Date.now()); // For live updates
+    const currentTime = useCurrentTime(); // Use custom hook for efficient time updates
     const refreshTimeout = useRef(null);
 
     // Debounced background refresh function
@@ -71,16 +74,28 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
       return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [backgroundRefresh, lastRefreshTime]);
 
-    // Timer to update 'now' every minute for live due date updates
-    useEffect(() => {
-      const interval = setInterval(() => setNow(Date.now()), 60000);
-      return () => clearInterval(interval);
-    }, []);
 
-    // Persistent thoughts box state
+
+    // Persistent thoughts box state with validation
     const [thoughts, setThoughts] = useState(() => {
-      return localStorage.getItem('tako-thoughts') || '';
+      const saved = localStorage.getItem('tako-thoughts');
+      if (saved) {
+        const validation = validateThoughts(saved);
+        return validation.isValid ? validation.sanitized : '';
+      }
+      return '';
     });
+    
+    const handleThoughtsChange = useCallback((e) => {
+      const newValue = e.target.value;
+      const validation = validateThoughts(newValue);
+      
+      if (validation.isValid) {
+        setThoughts(validation.sanitized);
+      }
+      // If invalid, don't update state (prevents invalid input)
+    }, []);
+    
     useEffect(() => {
       localStorage.setItem('tako-thoughts', thoughts);
     }, [thoughts]);
@@ -91,56 +106,13 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
       return sum + (project.taskCount || 0);
     }, 0);
 
-    // Helper function to calculate days from now for a given due date
-    const calculateDaysFromNow = (dueDate) => {
-      if (!dueDate) return null;
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      const due = new Date(dueDate);
-      due.setHours(0, 0, 0, 0);
-      return Math.floor((due - today) / (1000 * 60 * 60 * 24));
-    };
-
-    // Format deadline using days from now with real-time tracking
-    const formatDeadline = (daysFromNow) => {
-      if (daysFromNow === null || daysFromNow === undefined || daysFromNow === '') return '';
-      
-      // Ensure daysFromNow is a number
-      const days = typeof daysFromNow === 'string' ? Number(daysFromNow) : daysFromNow;
-      
-      // Calculate the actual due date based on days from now
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      const dueDate = new Date(today);
-      dueDate.setDate(today.getDate() + days);
-      
-      // Calculate days difference from today
-      const nowDate = new Date(now);
-      nowDate.setHours(0, 0, 0, 0);
-      const diffDays = Math.floor((dueDate - nowDate) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays < 0) return 'Overdue';
-      if (diffDays === 0) return 'Due Today';
-      if (diffDays === 1) return 'Due Tomorrow';
-      return `Due in ${diffDays} days`;
-    };
-
-    // Helper for color class
-    const deadlineClass = (daysFromNow) => {
-      if (daysFromNow === null || daysFromNow === undefined || daysFromNow === '') return '';
-      const days = typeof daysFromNow === 'string' ? Number(daysFromNow) : daysFromNow;
-      const today = new Date(now);
-      today.setHours(0, 0, 0, 0);
-      const dueDate = new Date(today);
-      dueDate.setDate(today.getDate() + days);
-      const nowDate = new Date(now);
-      nowDate.setHours(0, 0, 0, 0);
-      const diffDays = Math.floor((dueDate - nowDate) / (1000 * 60 * 60 * 24));
-      if (diffDays < 0) return 'overdue';
-      if (diffDays === 0) return 'due-today';
-      if (diffDays === 1) return 'due-tomorrow';
-      return '';
-    };
+    // Memoized date calculations using utility functions
+    const memoizedDateCalculations = useMemo(() => {
+      return {
+        formatDeadline: (daysFromNow) => formatDeadline(daysFromNow, currentTime),
+        deadlineClass: (daysFromNow) => getDeadlineClass(daysFromNow, currentTime)
+      };
+    }, [currentTime]);
 
     // Calculate due today and due tomorrow counts from project summaries
     // This is much more efficient than filtering allTasks
@@ -156,11 +128,11 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
       <div className="home-page">
         <div className="home-content">
           
-          <div className="task-summary">
+          <div className="task-summary" role="region" aria-label="Task summary">
             <div className="task-counter">
-              <div className="task-number">
+              <div className="task-number" aria-live="polite">
                 {remainingTasks}
-                {isRefreshing && <span className="refresh-indicator" title="Updating...">⟳</span>}
+                {isRefreshing && <span className="refresh-indicator" title="Updating..." aria-label="Updating data">⟳</span>}
               </div>
               <div className="task-label">Tasks Remaining</div>
               {/* <button 
@@ -168,26 +140,27 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
                 onClick={() => backgroundRefresh(true)}
                 disabled={isRefreshing}
                 title="Refresh project data"
+                aria-label="Refresh project data"
               >
                 Refresh
               </button> */}
             </div>
             
-            <div className="task-stats">
+            <div className="task-stats" role="group" aria-label="Task statistics">
               {/* <div className="stat-item">
                 <div className="stat-number">{doNowTaskCount}</div>
                 <div className="stat-label">Do Now</div>
               </div> */}
-              <div className="stat-item">
-                <div className="stat-number">{dueTodayCount}</div>
+              <div className="stat-item" role="group" aria-label="Due today tasks">
+                <div className="stat-number" aria-live="polite">{dueTodayCount}</div>
                 <div className="stat-label">Due Today</div>
               </div>
-              <div className="stat-item">
-                <div className="stat-number">{dueTomorrowCount}</div>
+              <div className="stat-item" role="group" aria-label="Due tomorrow tasks">
+                <div className="stat-number" aria-live="polite">{dueTomorrowCount}</div>
                 <div className="stat-label">Due Tomorrow</div>
               </div>
-              <div className="stat-item">
-                <div className="stat-number">{tasksCompletedToday}</div>
+              <div className="stat-item" role="group" aria-label="Tasks completed today">
+                <div className="stat-number" aria-live="polite">{tasksCompletedToday}</div>
                 <div className="stat-label">Completed Today</div>
               </div>
             </div>
@@ -212,8 +185,10 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
                 className="thoughts-box"
                 placeholder="Type your thoughts here..."
                 value={thoughts}
-                onChange={e => setThoughts(e.target.value)}
+                onChange={handleThoughtsChange}
                 rows={8}
+                maxLength={5000}
+                aria-label="Thoughts and notes"
               />
             </div>
           </div>

@@ -1,4 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useClickOutside } from '../../hooks/useClickOutside.js';
+import { validateTaskName, validateDeadline } from '../../utils/validation.js';
 import './List.css';
 import TaskList from '../TaskList/TaskList';
 
@@ -29,8 +31,15 @@ function List({
     const [nameBuffer, setNameBuffer] = useState(list.name);
     const nameInputRef = useRef(null);
     const [menuOpen, setMenuOpen] = useState(false);
-    const menuRef = useRef(null);
-    const taskInputRef = useRef(null);
+    
+    // Use custom hooks for click outside handling
+    const menuRef = useClickOutside(() => setMenuOpen(false), [menuOpen]);
+    const taskInputRef = useClickOutside(() => {
+      setShowAddTaskOption(false);
+      setTaskName("");
+      setTaskDeadline("");
+      setToastError("");
+    }, [showAddTaskOptions]);
 
     useEffect(() => {
         if (editingName && nameInputRef.current) {
@@ -38,33 +47,7 @@ function List({
         }
     }, [editingName]);
 
-    useEffect(() => {
-        function handleClick(e) {
-            if (menuRef.current && !menuRef.current.contains(e.target)) {
-                setMenuOpen(false);
-            }
-        }
-        if (menuOpen) {
-            document.addEventListener('mousedown', handleClick);
-        }
-        return () => document.removeEventListener('mousedown', handleClick);
-    }, [menuOpen]);
 
-    useEffect(() => {
-        if (!showAddTaskOptions) return;
-
-        function handleClickOutside(e) {
-            if (taskInputRef.current && !taskInputRef.current.contains(e.target)) {
-                setShowAddTaskOption(false);
-                setTaskName("");
-                setTaskDeadline("");
-                setToastError("");
-            }
-        }
-
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [showAddTaskOptions]);
 
     function saveName() {
         if (nameBuffer.trim() && nameBuffer.trim() !== list.name) {
@@ -135,38 +118,61 @@ function List({
                         className="list-name"
                         style={{ cursor: isDoNowList ? 'default' : 'pointer' }}
                         title={isDoNowList ? "Do Now list cannot be renamed" : "Double-click to rename"}
+                        role="button"
+                        tabIndex={isDoNowList ? -1 : 0}
+                        onKeyDown={(e) => {
+                            if (!isDoNowList && (e.key === 'Enter' || e.key === ' ')) {
+                                e.preventDefault();
+                                setEditingName(true);
+                            }
+                        }}
+                        aria-label={isDoNowList ? `${list.name} list (${list.taskCount} tasks)` : `${list.name} list (${list.taskCount} tasks) - double-click to rename`}
                     >
                         {list.name} ({list.taskCount})
                     </span>
                 )}
                 {!isDoNowList && (
-                    <button className="list-menu-btn" onClick={() => setMenuOpen(!menuOpen)}>
+                    <button 
+                        className="list-menu-btn" 
+                        onClick={() => setMenuOpen(!menuOpen)}
+                        aria-label={`${list.name} list menu`}
+                        aria-expanded={menuOpen}
+                        aria-haspopup="true"
+                    >
                         ⋮
                     </button>
                 )}
                 {menuOpen && (
-                    <div className="list-menu-row" ref={menuRef}>
+                    <div className="list-menu-row" ref={menuRef} role="menu" aria-label={`${list.name} list options`}>
                         <button
                             onClick={handleDelete}
                             disabled={listCount <= 1}
+                            role="menuitem"
+                            aria-label={`Delete ${list.name} list`}
                         >
                             Delete List
                         </button>
                         <button
                             onClick={handleClearTasks}
                             disabled={!hasCompleted}
+                            role="menuitem"
+                            aria-label={`Clear completed tasks in ${list.name} list`}
                         >
                             Clear Completed Tasks
                         </button>
                         <button
                             onClick={() => handleShift('left')}
                             disabled={isLeftmost}
+                            role="menuitem"
+                            aria-label={`Move ${list.name} list left`}
                         >
                             Shift Left
                         </button>
                         <button
                             onClick={() => handleShift('right')}
                             disabled={isRightmost}
+                            role="menuitem"
+                            aria-label={`Move ${list.name} list right`}
                         >
                             Shift Right
                         </button>
@@ -204,13 +210,22 @@ function List({
                                 onKeyDown={async e => {
                                     if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault();
-                                        const trimmedName = newTaskName.trim();
-                                        if (!trimmedName) {
-                                            setToastError("Task name cannot be empty");
+                                        
+                                        // Validate task name
+                                        const nameValidation = validateTaskName(newTaskName);
+                                        if (!nameValidation.isValid) {
+                                            setToastError(nameValidation.error);
                                             return;
                                         }
-                                        const deadline = newTaskDeadline.trim() === "" ? null : Number(newTaskDeadline);
-                                        const success = await addTask(projectId, isDoNowList ? 'do-now' : list.id, trimmedName, deadline);
+                                        
+                                        // Validate deadline
+                                        const deadlineValidation = validateDeadline(newTaskDeadline);
+                                        if (!deadlineValidation.isValid) {
+                                            setToastError(deadlineValidation.error);
+                                            return;
+                                        }
+                                        
+                                        const success = await addTask(projectId, isDoNowList ? 'do-now' : list.id, nameValidation.sanitized, deadlineValidation.sanitized);
                                         if (!success) {
                                             setToastError("Task name already exists");
                                             return;
@@ -240,16 +255,24 @@ function List({
                                 onKeyDown={async e => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
-                                        const trimmedName = newTaskName.trim();
-                                        if (!trimmedName) {
-                                            setToastError("Task name cannot be empty");
+                                        
+                                        // Validate task name
+                                        const nameValidation = validateTaskName(newTaskName);
+                                        if (!nameValidation.isValid) {
+                                            setToastError(nameValidation.error);
                                             return;
                                         }
-                                        const deadline = newTaskDeadline.trim() === "" ? null : Number(newTaskDeadline);
-                                        const success = await addTask(projectId, isDoNowList ? 'do-now' : list.id, trimmedName, deadline);
+                                        
+                                        // Validate deadline
+                                        const deadlineValidation = validateDeadline(newTaskDeadline);
+                                        if (!deadlineValidation.isValid) {
+                                            setToastError(deadlineValidation.error);
+                                            return;
+                                        }
+                                        
+                                        const success = await addTask(projectId, isDoNowList ? 'do-now' : list.id, nameValidation.sanitized, deadlineValidation.sanitized);
                                         if (!success) {
                                             setToastError("Task name already exists");
-                                            console.log("Toast error triggered!");
                                             return;
                                         }
                                         setTaskName("");
@@ -258,7 +281,7 @@ function List({
                                         setToastError("");
                                     }
                                     if (e.key === 'Escape') {
-                                        setNewTaskDeadline("");
+                                        setTaskDeadline("");
                                         setShowAddTaskOption(false);
                                         setToastError("");
                                     }
@@ -271,6 +294,7 @@ function List({
                             autoFocus
                             className="add-task-block"
                             onClick={() => setShowAddTaskOption(true)}
+                            aria-label={`Add task to ${list.name} list`}
                         >Add task...</button>
                     )
                 }

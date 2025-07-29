@@ -1,30 +1,23 @@
 .list-container {
     display: flex;
     flex-direction: column;
-    column-count: 2;
     justify-content: flex-start;
     height: 100%;
+    min-width: 0; /* Allow flex item to shrink */
 }
 
 
 .list-header {
     position: relative;
     border-bottom: 1px solid #eaeceb;
-    width: 97.5%;
-    /* margin: 8px; */
+    width: 100%;
     display: flex;
     justify-content: space-between;
-    /* margin-top: 8px; */
-    align-self: center;
-    /* max-width: fit-content; */
-    padding-left: 8px;
-    /* padding-right: 8px; */
-    padding-bottom: 6px;
-    padding-top: 6px;
-    font-size: 32px;
+    align-items: center;
+    padding: 6px 8px;
+    font-size: 24px;
     font-weight: bold;
-    /* border-radius: 5px; */
-    
+    min-width: 0; /* Allow flex item to shrink */
 }
 
 .list-buttons {
@@ -74,7 +67,8 @@ add-task-block hover{
     margin: 5px;
     padding: 4px;
     justify-content: space-between;
-    width: 94%;
+    width: 100%;
+    min-width: 0; /* Allow flex item to shrink */
 }
 
 .add-task-input {

@@ -1,4 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { useCurrentTime } from '../../hooks/useCurrentTime.js';
+import { useClickOutside } from '../../hooks/useClickOutside.js';
+import { formatDeadline, getDeadlineClass } from '../../utils/dateUtils.js';
 import './TaskList.css';
 // import SubtaskList from '../SubtaskList/SubtaskList';
 
@@ -20,45 +23,23 @@ function TaskList({
   // const [showSubtaskInput, setShowSubtaskInput] = useState(false);
   // const [newSubtaskName, setNewSubtaskName] = useState('');
   // const [newSubtaskDeadline, setNewSubtaskDeadline] = useState('');
-  const [now, setNow] = useState(Date.now()); // For live updates
+  const currentTime = useCurrentTime(); // Use centralized time hook
 
   // Track which tasks have their subtasks collapsed
   const [collapsedTasks, setCollapsedTasks] = useState({});
 
-  const menuRef = useRef(null);
-  const editRef = useRef(null);
-
-  // Timer to update 'now' every minute for live due date updates
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Close the task menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = e => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpenId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Exit edit mode when clicking outside the edit inputs
-  useEffect(() => {
-    const handleClickOutsideEdit = e => {
-      if (editingTaskId && editRef.current && !editRef.current.contains(e.target)) {
-        setEditingTaskId(null);
-        setShowSubtaskInput(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutsideEdit);
-    return () => document.removeEventListener('mousedown', handleClickOutsideEdit);
+  // Use custom hooks for click outside handling
+  const menuRef = useClickOutside(() => setMenuOpenId(null));
+  const editRef = useClickOutside(() => {
+    setEditingTaskId(null);
+    // setShowSubtaskInput(false);
   }, [editingTaskId]);
 
-  function sortTasks(arr) {
-    return arr
+
+
+  // Memoized sorting function to prevent unnecessary re-computations
+  const sortedTasks = useMemo(() => {
+    return tasks
       .map((t, idx) => ({ ...t, _creationIndex: idx }))
       .sort((a, b) => {
         const aDone = !!a.completedAt;
@@ -69,53 +50,15 @@ function TaskList({
         }
         return a.createdAt - b.createdAt;
       });
-  }
+  }, [tasks]);
 
-  // Format deadline using days from now with real-time tracking
-  function formatDeadline(daysFromNow) {
-    if (daysFromNow === null || daysFromNow === undefined || daysFromNow === '') return '';
-    
-    // Ensure daysFromNow is a number
-    const days = typeof daysFromNow === 'string' ? Number(daysFromNow) : daysFromNow;
-    
-    // Calculate the actual due date based on days from now
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(today);
-    dueDate.setDate(today.getDate() + days);
-    
-    // Calculate days difference from today
-    const nowDate = new Date(now);
-    nowDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.floor((dueDate - nowDate) / (1000 * 60 * 60 * 24));
-    
-    // Debug logging for testing
-    console.log(`formatDeadline: daysFromNow=${daysFromNow} (type: ${typeof daysFromNow}), days=${days}, diffDays=${diffDays}, now=${new Date(now).toDateString()}`);
-    
-    if (diffDays < 0) return 'Overdue';
-    if (diffDays === 0) return 'Due Today';
-    if (diffDays === 1) return 'Due Tomorrow';
-    return `Due in ${diffDays} days`;
-  }
-
-  // Helper for color class
-  function deadlineClass(daysFromNow) {
-    if (daysFromNow === null || daysFromNow === undefined || daysFromNow === '') return '';
-    const days = typeof daysFromNow === 'string' ? Number(daysFromNow) : daysFromNow;
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(today);
-    dueDate.setDate(today.getDate() + days);
-    const nowDate = new Date(now);
-    nowDate.setHours(0, 0, 0, 0);
-    const diffDays = Math.floor((dueDate - nowDate) / (1000 * 60 * 60 * 24));
-    if (diffDays < 0) return 'overdue';
-    if (diffDays === 0) return 'due-today';
-    if (diffDays === 1) return 'due-tomorrow';
-    return '';
-  }
-
-  const sortedTasks = sortTasks(tasks);
+  // Memoized date calculations using utility functions
+  const memoizedDateCalculations = useMemo(() => {
+    return {
+      formatDeadline: (daysFromNow) => formatDeadline(daysFromNow, currentTime),
+      deadlineClass: (daysFromNow) => getDeadlineClass(daysFromNow, currentTime)
+    };
+  }, [currentTime]);
 
   return (sortedTasks ?? []).map(task => {
     const isCollapsed = !!collapsedTasks[task.id] || !!task.completedAt;
@@ -132,6 +75,7 @@ function TaskList({
                 .then(() => console.log('[TaskCheckbox] updateTask resolved'))
                 .catch(err => console.error('[TaskCheckbox] updateTask failed:', err));
             }}
+            aria-label={`Mark ${task.name} as ${task.completedAt ? 'incomplete' : 'complete'}`}
           />
           <div
             className="task-name-deadline"
@@ -238,6 +182,17 @@ function TaskList({
                     setEditName(task.name);
                     setEditDeadline(task.dueDate !== null ? task.dueDate.toString() : '');
                   }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setEditingTaskId(task.id);
+                      setEditName(task.name);
+                      setEditDeadline(task.dueDate !== null ? task.dueDate.toString() : '');
+                    }
+                  }}
+                  aria-label={`Edit ${task.name} task`}
                 >
                   {task.name}
                   {/* {task.subtaskCount > 0 && (
@@ -245,8 +200,8 @@ function TaskList({
                   )} */}
                 </span>
                 {task.dueDate ? (
-                  <span className={`task-deadline ${deadlineClass(task.dueDate)}`}>
-                    {formatDeadline(task.dueDate)}
+                  <span className={`task-deadline ${memoizedDateCalculations.deadlineClass(task.dueDate)}`}>
+                    {memoizedDateCalculations.formatDeadline(task.dueDate)}
                   </span>
                 ) : null}
                 <div className="task-controls">
@@ -255,11 +210,14 @@ function TaskList({
                     onClick={() =>
                       setMenuOpenId(prev => (prev === task.id ? null : task.id))
                     }
+                    aria-label={`${task.name} task menu`}
+                    aria-expanded={menuOpenId === task.id}
+                    aria-haspopup="true"
                   >
                     ⋮
                   </button>
                   {menuOpenId === task.id && (
-                    <div className="task-menu-dropdown" ref={menuRef}>
+                    <div className="task-menu-dropdown" ref={menuRef} role="menu" aria-label={`${task.name} task options`}>
                       <button
                         className="task-menu-item"
                         onClick={() => {
@@ -269,6 +227,8 @@ function TaskList({
                           }));
                           setMenuOpenId(null);
                         }}
+                        role="menuitem"
+                        aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} subtasks for ${task.name}`}
                       >
                         {isCollapsed ? 'Expand Subtasks' : 'Collapse Subtasks'}
                       </button>
@@ -278,6 +238,8 @@ function TaskList({
                           deleteTask(projectId, listId, task.id);
                           setMenuOpenId(null);
                         }}
+                        role="menuitem"
+                        aria-label={`Delete ${task.name} task`}
                       >
                         Delete Task
                       </button>
