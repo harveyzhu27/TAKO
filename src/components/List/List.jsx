@@ -77,9 +77,7 @@ function List({
     function handleClearTasks() {
         const completedTasks = (list.tasks || []).filter(task => task.completedAt);
         if (completedTasks.length === 0) return;
-        if (
-            window.confirm("Are you sure you want to clear all completed tasks in this list? This cannot be undone.")
-        ) {
+        {
             completedTasks.forEach(task => deleteTask(projectId, list.id, task.id));
             setMenuOpen(false);
             setToastError("");

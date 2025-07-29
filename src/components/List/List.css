@@ -10,7 +10,7 @@
 .list-header {
     position: relative;
     border-bottom: 1px solid #eaeceb;
-    width: 100%;
+    /* width: 100%; */
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -63,11 +63,13 @@ add-task-block hover{
     background-color: #2D6A4F;
     display: flex;
     align-items: center;
-    border-radius: 5px;
-    margin: 5px;
+    /* border-radius: 5px; */
+    /* margin: 5px; */
+    border-radius: 8px;
+
     padding: 4px;
     justify-content: space-between;
-    width: 100%;
+    width: 95%;
     min-width: 0; /* Allow flex item to shrink */
 }
 

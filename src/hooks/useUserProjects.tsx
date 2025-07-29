@@ -728,6 +728,8 @@ const moveList = useCallback(
           )?.tasks.find(t => t.id === taskId);
           const wasCompleted = currentTask?.completedAt !== null;
           
+          console.log('[updateTask] Task found:', { taskId, currentTask, wasCompleted, isCompleting, projectData: !!projectData[projectId] });
+          
           if (isCompleting !== wasCompleted) {
             // Apply optimistic update immediately
             updateProjectData(projectId, lists =>
@@ -761,6 +763,8 @@ const moveList = useCallback(
                   : p
               )
             );
+          } else {
+            console.log('[updateTask] No optimistic update needed - completion status unchanged');
           }
         }
       }
@@ -783,8 +787,27 @@ const moveList = useCallback(
         } else {
           updated = await apiUpdateTask(projectId, listId, taskId, updates);
           
-          // For non-completion updates, update the task in local state
-          if (updates.completedAt === undefined) {
+          console.log('[updateTask] Server response:', { updated, updates });
+          
+          // For completion updates, ensure the optimistic update is properly reflected
+          // by updating with the server response
+          if (updates.completedAt !== undefined) {
+            updateProjectData(projectId, lists =>
+              lists.map(l =>
+                l.id === listId
+                  ? {
+                    ...l,
+                    tasks: l.tasks.map(t =>
+                      t.id === taskId
+                        ? { ...updated, subtasks: t.subtasks }
+                        : t
+                    ),
+                  }
+                  : l
+              )
+            );
+          } else {
+            // For non-completion updates, update the task in local state
             updateProjectData(projectId, lists =>
               lists.map(l =>
                 l.id === listId

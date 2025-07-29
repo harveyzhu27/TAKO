@@ -218,7 +218,7 @@ function TaskList({
                   </button>
                   {menuOpenId === task.id && (
                     <div className="task-menu-dropdown" ref={menuRef} role="menu" aria-label={`${task.name} task options`}>
-                      <button
+                      {/* <button
                         className="task-menu-item"
                         onClick={() => {
                           setCollapsedTasks(prev => ({
@@ -231,7 +231,7 @@ function TaskList({
                         aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} subtasks for ${task.name}`}
                       >
                         {isCollapsed ? 'Expand Subtasks' : 'Collapse Subtasks'}
-                      </button>
+                      </button> */}
                       <button
                         className="task-menu-item"
                         onClick={() => {
