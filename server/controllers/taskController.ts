@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { getNewTaskId, validateName, recalculateTaskCount, recalculateProjectTaskCount } from '../utils/utils';
 import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-admin/firestore';
 import { createTask } from '../../shared/models/TaskModel';
+import { FieldValue } from 'firebase-admin/firestore';
 
 let currentTaskOrder = 0;
 
@@ -48,14 +49,15 @@ export const createTaskController = async (req: Request, res: Response) => {
       .collection('tasks').doc(taskId);
     batch.set(taskRef, task);
     
-    // Optimistically increment list taskCount (since new task is incomplete)
+    // OPTIMIZATION: Use incremental updates instead of recalculating
+    // Since new task is incomplete, increment taskCount
     batch.update(listRef, { 
-      taskCount: (listSnap.data()?.taskCount || 0) + 1 
+      taskCount: FieldValue.increment(1)
     });
     
-    // Optimistically increment project taskCount
+    // Increment project taskCount
     batch.update(projectRef, { 
-      taskCount: (projectSnap.data()?.taskCount || 0) + 1 
+      taskCount: FieldValue.increment(1)
     });
     
     // Execute all operations in a single batch
@@ -149,7 +151,7 @@ export const updateTaskController = async (req: Request, res: Response) => {
     // Update task
     batch.update(taskRef, updates);
     
-    // Optimistically update taskCount if completion status changed
+    // OPTIMIZATION: Use incremental updates for taskCount changes
     if (req.body.completedAt !== undefined) {
       const currentTask = taskSnap.data()!;
       const isCompleting = req.body.completedAt !== null;
@@ -160,18 +162,14 @@ export const updateTaskController = async (req: Request, res: Response) => {
           .collection('lists').doc(listid);
         const projectRef = db.collection('projects').doc(projectid);
         
-        // Update list taskCount
-        const listSnap = await listRef.get();
-        const currentListCount = listSnap.data()?.taskCount || 0;
+        // Use incremental updates instead of reading current values
+        const increment = isCompleting ? -1 : 1;
         batch.update(listRef, { 
-          taskCount: isCompleting ? Math.max(currentListCount - 1, 0) : currentListCount + 1 
+          taskCount: FieldValue.increment(increment)
         });
         
-        // Update project taskCount
-        const projectSnap = await projectRef.get();
-        const currentProjectCount = projectSnap.data()?.taskCount || 0;
         batch.update(projectRef, { 
-          taskCount: isCompleting ? Math.max(currentProjectCount - 1, 0) : currentProjectCount + 1 
+          taskCount: FieldValue.increment(increment)
         });
       }
     }
@@ -212,24 +210,19 @@ export const deleteTaskController = async (req: Request, res: Response) => {
     subsSnap.docs.forEach(sd => batch.delete(sd.ref));
     batch.delete(taskRef);
     
-    // Optimistically update taskCount if task was incomplete
+    // OPTIMIZATION: Use incremental updates for taskCount
     if (wasIncomplete) {
       const listRef = db.collection('projects').doc(projectid)
         .collection('lists').doc(listid);
       const projectRef = db.collection('projects').doc(projectid);
       
-      // Update list taskCount
-      const listSnap = await listRef.get();
-      const currentListCount = listSnap.data()?.taskCount || 0;
+      // Use incremental updates instead of reading current values
       batch.update(listRef, { 
-        taskCount: Math.max(currentListCount - 1, 0) 
+        taskCount: FieldValue.increment(-1)
       });
       
-      // Update project taskCount
-      const projectSnap = await projectRef.get();
-      const currentProjectCount = projectSnap.data()?.taskCount || 0;
       batch.update(projectRef, { 
-        taskCount: Math.max(currentProjectCount - 1, 0) 
+        taskCount: FieldValue.increment(-1)
       });
     }
     

@@ -8,6 +8,7 @@ import {
   signOut,
 } from "firebase/auth";
 
+
 // Context object allows u to share data across components without
 // having to pass the prop all they way down the tree.
 const AuthContext = createContext();

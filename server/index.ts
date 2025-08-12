@@ -9,7 +9,7 @@ import listsRouter    from './routes/lists';
 import tasksRouter    from './routes/tasks';
 import subtasksRouter from './routes/subtasks';
 import doNowRouter    from './routes/doNow';
-import nlpRouter      from './routes/nlp';
+
 
 dotenv.config();
 const app = express();
@@ -33,7 +33,7 @@ app.use('/projects', listsRouter);
 app.use('/projects', tasksRouter);
 app.use('/projects', subtasksRouter);
 app.use('/doNow', doNowRouter);
-app.use('/nlp', nlpRouter);
+
 
 // ─── Health check & error handling ────────────────────────────────────────────
 app.get('/', (req, res) => res.send('Backend is running!'));

@@ -27,7 +27,7 @@
   height: fit-content;
   display: flex;
   /* background-color: #2D6A4F; */
-  align-items: center;
+  align-items: flex-start; /* Changed from center to flex-start to keep checkbox at top */
   /* justify-content: center; */
   justify-content: space-between;
   /* width: 100%; */
@@ -242,4 +242,6 @@
 .task-checkbox {
   margin: 0px;
   height: 100%;
+  align-self: flex-start; /* Ensure checkbox stays at the top */
+  margin-top: 2px; /* Small top margin for visual alignment */
 }

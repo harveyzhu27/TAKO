@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef, Suspense, useMemo } from 'react';
 import HabitTracker from './HabitTracker.jsx';
 import DoNowList from './DoNowList.jsx';
-import NLP from './NLP.jsx';
+
 import { useCurrentTime } from '../hooks/useCurrentTime.js';
 import { formatDeadline, getDeadlineClass } from '../utils/dateUtils.js';
 import { validateThoughts } from '../utils/validation.js';

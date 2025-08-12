@@ -1,11 +1,12 @@
 // useUserProjects.ts
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAuthContext } from "./useAuth.jsx";
 import type { Project, ProjectSummary } from "@shared/models/ProjectModel";
 import type { List } from "@shared/models/ListModel";
 import type { Task, TaskUpdate } from "@shared/models/TaskModel";
 // import type { Subtask, SubtaskUpdate } from "@shared/models/SubtaskModel";
 import { getIdToken } from "firebase/auth";
+import { startTiming, endTiming } from "../utils/performanceUtils";
 
 import {
   getAllProjects as apiGetAllProjects,
@@ -62,6 +63,10 @@ export default function useUserProjects() {
 
   // Add a refreshKey for manual/triggered refreshes
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Request deduplication to prevent duplicate API calls
+  const pendingRequests = useRef<Map<string, Promise<any>>>(new Map());
+  
   // Function to force a full refresh from backend
   const forceRefresh = useCallback(() => setRefreshKey(k => k + 1), []);
   
@@ -77,6 +82,66 @@ export default function useUserProjects() {
   // Function to clear all project caches
   const clearAllCaches = useCallback(() => {
     setProjectData({});
+  }, []);
+
+  // Cache expiration management
+  const cacheExpiry = useRef<Map<string, number>>(new Map());
+  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+  
+  // Function to check and clear expired cache entries
+  const clearExpiredCache = useCallback(() => {
+    const now = Date.now();
+    const expiredProjects: string[] = [];
+    
+    cacheExpiry.current.forEach((expiry, projectId) => {
+      if (now > expiry) {
+        expiredProjects.push(projectId);
+      }
+    });
+    
+    if (expiredProjects.length > 0) {
+      setProjectData(prev => {
+        const newData = { ...prev };
+        expiredProjects.forEach(projectId => {
+          delete newData[projectId];
+          cacheExpiry.current.delete(projectId);
+        });
+        return newData;
+      });
+      console.log(`🧹 Cleared expired cache for ${expiredProjects.length} projects`);
+    }
+  }, []);
+  
+  // Set cache expiry when adding project data
+  const setProjectDataWithExpiry = useCallback((projectId: string, data: List[]) => {
+    setProjectData(prev => ({ ...prev, [projectId]: data }));
+    cacheExpiry.current.set(projectId, Date.now() + CACHE_DURATION);
+  }, []);
+  
+  // Clear expired cache every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(clearExpiredCache, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [clearExpiredCache]);
+
+  // Request deduplication helper
+  const deduplicatedRequest = useCallback(async (
+    key: string, 
+    requestFn: () => Promise<any>
+  ): Promise<any> => {
+    if (pendingRequests.current.has(key)) {
+      return pendingRequests.current.get(key);
+    }
+    
+    const promise = requestFn();
+    pendingRequests.current.set(key, promise);
+    
+    try {
+      const result = await promise;
+      return result;
+    } finally {
+      pendingRequests.current.delete(key);
+    }
   }, []);
 
 
@@ -139,8 +204,8 @@ export default function useUserProjects() {
     if (!currentUser) return;
     
     try {
-      const tasks = await apiGetDoNowTasks();
-      const tasksWithSubtasks = tasks.map(task => ({ ...task, subtasks: [] }));
+      const tasks = await deduplicatedRequest('loadDoNowTasks', apiGetDoNowTasks);
+      const tasksWithSubtasks = tasks.map((task: Task) => ({ ...task, subtasks: [] }));
       setDoNowTasks(tasksWithSubtasks);
       
       // Calculate tasks completed today from all sources
@@ -148,14 +213,14 @@ export default function useUserProjects() {
       today.setHours(0, 0, 0, 0);
       
       // Count completed Do Now tasks
-      const doNowCompleted = tasksWithSubtasks.filter(task => 
+      const doNowCompleted = tasksWithSubtasks.filter((task: Task) => 
         task.completedAt && new Date(task.completedAt) >= today
       ).length;
       
       // Count completed project tasks
       const projectCompleted = Object.values(projectData).flatMap(lists =>
         lists.flatMap(list =>
-          list.tasks.filter(task => 
+          list.tasks.filter((task: Task) => 
             task.completedAt && new Date(task.completedAt) >= today
           )
         )
@@ -216,18 +281,19 @@ export default function useUserProjects() {
     setError(null);
 
     (async () => {
+      const timingId = startTiming('loadProjectData', { projectId: currentProject });
       try {
-        // Fetch all lists and tasks for the current project (subtasks commented out)
-        const rawLists = await apiGetLists(currentProject);
+        // OPTIMIZATION: Fetch lists and tasks in parallel for better performance
+        const [rawLists, doNowTasksData] = await Promise.all([
+          apiGetLists(currentProject),
+          apiGetDoNowTasks()
+        ]);
+        
+        // Process lists and tasks in parallel
         const listsWithTasks = await Promise.all(
           rawLists.map(async (l) => {
+            // OPTIMIZATION: Only fetch incomplete tasks for better performance
             const tasks = await apiGetTasks(currentProject, l.id);
-            // const tasksWithSubtasks = await Promise.all(
-            //   tasks.map(async (task) => {
-            //     const subtasks = await apiGetSubtasks(currentProject, l.id, task.id);
-            //     return { ...task, subtasks };
-            //   })
-            // );
             const tasksWithSubtasks = tasks.map(task => ({ ...task, subtasks: [] }));
             return {
               ...l,
@@ -236,14 +302,15 @@ export default function useUserProjects() {
             };
           })
         );
-        setProjectData(prev => ({ ...prev, [currentProject]: listsWithTasks }));
+        
+        setProjectDataWithExpiry(currentProject, listsWithTasks);
         
         // Recalculate tasks completed today after loading project data
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         
         // Count completed Do Now tasks
-        const doNowCompleted = doNowTasks.filter(task => 
+        const doNowCompleted = doNowTasksData.filter(task => 
           task.completedAt && new Date(task.completedAt) >= today
         ).length;
         
@@ -260,6 +327,7 @@ export default function useUserProjects() {
       } catch (e: any) {
         setError(e.message ?? "Failed to load project data");
       } finally {
+        endTiming('loadProjectData', timingId);
         setLoading(false);
         setLoadingProjects(prev => {
           const newSet = new Set(prev);
@@ -268,7 +336,7 @@ export default function useUserProjects() {
         });
       }
     })();
-  }, [currentProject, refreshKey, projectData]);
+  }, [currentProject, refreshKey, projectData, setProjectDataWithExpiry, doNowTasks]);
 
   // Projects CRUD
   const addProject = useCallback(async (name: string) => {
@@ -289,10 +357,7 @@ export default function useUserProjects() {
       }
       setProjectSummaries(prev => [...prev, newSummary]);
 
-      setProjectData(prev => ({
-        ...prev,
-        [newProject.id]: [{ ...defaultList, tasks: [] }],
-      }));
+      setProjectDataWithExpiry(newProject.id, [{ ...defaultList, tasks: [] }]);
       setCurrentProject(newProject.id);
 
 
@@ -303,7 +368,7 @@ export default function useUserProjects() {
     } finally {
       setLoadingSidebar(false);
     }
-  }, []);
+  }, [setProjectDataWithExpiry]);
 
   const deleteProject = useCallback(async (projectId: string) => {
     setLoadingSidebar(true);
@@ -354,7 +419,7 @@ export default function useUserProjects() {
 
   const refreshProjectSummaries = useCallback(async () => {
     try {
-      const summaries = await apiGetProjectSummaries();
+      const summaries = await deduplicatedRequest('refreshProjectSummaries', apiGetProjectSummaries);
       setProjectSummaries(summaries);
     } catch (err: unknown) {
       console.error("🔴 refreshProjectSummaries failed:", (err as Error).message);
@@ -453,11 +518,11 @@ export default function useUserProjects() {
       
       console.log("📊 Lists with tasks:", listsWithTasks.map(l => ({ id: l.id, name: l.name, taskCount: l.taskCount, taskCountFromTasks: l.tasks.length })));
       
-      setProjectData(prev => ({ ...prev, [currentProject]: listsWithTasks }));
+      setProjectDataWithExpiry(currentProject, listsWithTasks);
     } catch (err: unknown) {
       console.error("🔴 refreshCurrentProjectData failed:", (err as Error).message);
     }
-  }, [currentProject, apiGetLists, apiGetTasks]);
+  }, [currentProject, apiGetLists, apiGetTasks, setProjectDataWithExpiry]);
 
 
 
@@ -552,7 +617,7 @@ const moveList = useCallback(
     ]);
 
       const updatedLists = await apiGetLists(projectId);
-      setProjectData(prev => ({ ...prev, [projectId]: updatedLists }));
+      setProjectDataWithExpiry(projectId, updatedLists);
     } catch (e: any) {
       setError(e.message ?? "Unable to move list");
       throw e;

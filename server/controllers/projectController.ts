@@ -78,8 +78,10 @@ export const getAllProjectsController = async (req: Request, res: Response) => {
 }
 
 export const getProjectSummariesController = async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  
   try {
-    const uid = (req as any).user.uid
+    const uid = (req as any).user.uid;
     
     // Get all projects for this user
     const projectsSnapshot = await db.collection('projects')
@@ -88,6 +90,8 @@ export const getProjectSummariesController = async (req: Request, res: Response)
       .get();
     
     if (projectsSnapshot.empty) {
+      const duration = Date.now() - startTime;
+      console.log(`📊 Project summaries: 0 projects, ${duration}ms`);
       return res.json([]);
     }
     
@@ -100,7 +104,7 @@ export const getProjectSummariesController = async (req: Request, res: Response)
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowTimestamp = tomorrow.getTime();
     
-    // Process each project to get due counts
+    // OPTIMIZED: Use limits and filters to reduce data transfer and processing time
     const summaries = await Promise.all(projectsSnapshot.docs.map(async (doc) => {
       const projectId = doc.id;
       const projectData = doc.data();
@@ -112,30 +116,47 @@ export const getProjectSummariesController = async (req: Request, res: Response)
         // Get all lists for this project
         const listsSnapshot = await db.collection('projects').doc(projectId).collection('lists').get();
         
-        // Get all tasks for all lists in parallel
+        // OPTIMIZATION: Only fetch incomplete tasks with due dates (most relevant for summaries)
         const listTasksPromises = listsSnapshot.docs.map(async (listDoc) => {
-          const tasksSnapshot = await listDoc.ref.collection('tasks').get();
+          // Only fetch incomplete tasks with due dates, limit to 50 per list
+          const tasksSnapshot = await listDoc.ref.collection('tasks')
+            .where('completedAt', '==', null)
+            .where('dueDate', '!=', null)
+            .limit(50) // Limit to prevent excessive data transfer
+            .get();
+          
           return tasksSnapshot.docs.map(taskDoc => taskDoc.data());
         });
         
         const allListTasks = await Promise.all(listTasksPromises);
         const allTasks = allListTasks.flat();
         
-        // Calculate due counts
+        // FIXED: Proper due date calculation that handles daily updates correctly
         for (const taskData of allTasks) {
-          // Skip completed tasks
-          if (taskData.completedAt) continue;
-          
-          // Calculate actual due date from days from now
+          // dueDate is stored as "days from when the task was created"
+          // We need to recalculate this daily to show correct due dates
           if (taskData.dueDate !== null && taskData.dueDate !== undefined) {
-            const dueDate = new Date(today);
-            dueDate.setDate(today.getDate() + taskData.dueDate);
-            const dueDateTimestamp = dueDate.getTime();
+            // Calculate how many days have passed since the task was created
+            const taskCreatedDate = new Date(taskData.createdAt);
+            taskCreatedDate.setHours(0, 0, 0, 0);
+            
+            // Calculate the actual due date based on creation date + dueDate offset
+            const actualDueDate = new Date(taskCreatedDate);
+            actualDueDate.setDate(taskCreatedDate.getDate() + taskData.dueDate);
+            actualDueDate.setHours(0, 0, 0, 0);
+            
+            // Calculate days difference from today
+            const daysFromToday = Math.floor((actualDueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            
+            // Debug logging for due date calculations
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`📅 Task "${taskData.name}": dueDate=${taskData.dueDate}, created=${taskCreatedDate.toDateString()}, actualDue=${actualDueDate.toDateString()}, daysFromToday=${daysFromToday}`);
+            }
             
             // Check if due today or tomorrow
-            if (dueDateTimestamp === todayTimestamp) {
+            if (daysFromToday === 0) {
               dueTodayCount++;
-            } else if (dueDateTimestamp === tomorrowTimestamp) {
+            } else if (daysFromToday === 1) {
               dueTomorrowCount++;
             }
           }
@@ -155,9 +176,14 @@ export const getProjectSummariesController = async (req: Request, res: Response)
       };
     }));
     
+    const duration = Date.now() - startTime;
+    const totalTasks = summaries.reduce((sum, s) => sum + (s.dueTodayCount + s.dueTomorrowCount), 0);
+    console.log(`📊 Project summaries: ${summaries.length} projects, ${totalTasks} due tasks, ${duration}ms`);
+    
     return res.json(summaries);
   } catch (err) {
-    console.error('Error fetching project summaries', err);
+    const duration = Date.now() - startTime;
+    console.error(`Error fetching project summaries after ${duration}ms:`, err);
     return res.status(500).json({ error: 'Failed to load project summaries' });
   }
 };

@@ -28,6 +28,9 @@ export const formatDeadline = (daysFromNow, now = Date.now()) => {
   // Ensure daysFromNow is a number
   const days = typeof daysFromNow === 'string' ? Number(daysFromNow) : daysFromNow;
   
+  // Handle due today (0) case explicitly
+  if (days === 0) return 'Due Today';
+  
   // Calculate the actual due date based on days from now
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);

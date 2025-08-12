@@ -35,7 +35,7 @@
 
 .do-now-task {
   display: flex;
-  align-items: center;
+  align-items: flex-start; /* Changed from center to flex-start to keep checkbox at top */
   gap: 0.5rem;
   padding: 0.75rem;
   background-color: var(--background-color);
@@ -73,6 +73,8 @@
   height: 18px;
   cursor: pointer;
   accent-color: #4CAF50;
+  align-self: flex-start; /* Ensure checkbox stays at the top */
+  margin-top: 2px; /* Small top margin for visual alignment */
 }
 
 .task-content {
