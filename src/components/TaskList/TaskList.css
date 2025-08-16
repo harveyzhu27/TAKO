@@ -8,7 +8,20 @@
   border-radius: 5px;
   color: white;
   height: fit-content;
-  transition: background 0.2s;
+  transition: all 0.2s ease;
+  cursor: grab;
+}
+
+.task-block:active {
+  cursor: grabbing;
+}
+
+.task-block[draggable="false"] {
+  cursor: default;
+}
+
+.task-block.dragging {
+  opacity: 0.5;
 }
 
 .task-block:hover {

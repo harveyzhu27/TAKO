@@ -1,11 +1,37 @@
 // Project utility functions for efficient data management
 
+interface List {
+  id: string;
+  order?: number;
+  [key: string]: unknown;
+}
+
+interface Project {
+  id?: string;
+  name?: string;
+  description?: string;
+  move?: boolean;
+  [key: string]: unknown;
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: string[];
+  sanitized: Project;
+}
+
+interface LoadingState {
+  operation: string;
+  projectId: string;
+  timestamp: number;
+}
+
 /**
  * Memoized sorting function for project lists
- * @param {Array} lists - Array of lists to sort
- * @returns {Array} Sorted lists
+ * @param lists - Array of lists to sort
+ * @returns Sorted lists
  */
-export const sortProjectLists = (lists) => {
+export const sortProjectLists = (lists: List[] | null | undefined): List[] => {
   if (!lists || !Array.isArray(lists)) return [];
   
   return [...lists].sort((a, b) => {
@@ -18,12 +44,16 @@ export const sortProjectLists = (lists) => {
 
 /**
  * Optimistic update for project operations
- * @param {Function} updateFn - Function to update state
- * @param {Function} rollbackFn - Function to rollback on error
- * @param {Function} operation - Async operation to perform
- * @returns {Promise} Result of operation
+ * @param updateFn - Function to update state
+ * @param rollbackFn - Function to rollback on error
+ * @param operation - Async operation to perform
+ * @returns Result of operation
  */
-export const optimisticUpdate = async (updateFn, rollbackFn, operation) => {
+export const optimisticUpdate = async <T>(
+  updateFn: () => void,
+  rollbackFn: () => void,
+  operation: () => Promise<T>
+): Promise<T> => {
   try {
     // Apply optimistic update immediately
     updateFn();
@@ -41,27 +71,34 @@ export const optimisticUpdate = async (updateFn, rollbackFn, operation) => {
 
 /**
  * Debounced function to prevent excessive API calls
- * @param {Function} func - Function to debounce
- * @param {number} delay - Delay in milliseconds
- * @returns {Function} Debounced function
+ * @param func - Function to debounce
+ * @param delay - Delay in milliseconds
+ * @returns Debounced function
  */
-export const debounce = (func, delay) => {
-  let timeoutId;
-  return (...args) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func.apply(null, args), delay);
+export const debounce = <T extends (...args: unknown[]) => unknown>(
+  func: T,
+  delay: number
+): ((...args: Parameters<T>) => void) => {
+  let timeoutId: number;
+  return (...args: Parameters<T>) => {
+    window.clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => func.apply(null, args), delay);
   };
 };
 
 /**
  * Retry mechanism for failed operations
- * @param {Function} operation - Operation to retry
- * @param {number} maxRetries - Maximum number of retries
- * @param {number} delay - Delay between retries
- * @returns {Promise} Result of operation
+ * @param operation - Operation to retry
+ * @param maxRetries - Maximum number of retries
+ * @param delay - Delay between retries
+ * @returns Result of operation
  */
-export const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
-  let lastError;
+export const retryOperation = async <T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delay: number = 1000
+): Promise<T> => {
+  let lastError: Error;
   
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -71,16 +108,16 @@ export const retryOperation = async (operation, maxRetries = 3, delay = 1000) =>
       }
       return result;
     } catch (error) {
-      lastError = error;
-      console.warn(`⚠️ Operation failed (attempt ${attempt + 1}/${maxRetries + 1}):`, error.message);
+      lastError = error as Error;
+      console.warn(`⚠️ Operation failed (attempt ${attempt + 1}/${maxRetries + 1}):`, (error as Error).message);
       
       if (attempt === maxRetries) {
-        console.error(`❌ Operation failed after ${maxRetries + 1} attempts:`, error.message);
+        console.error(`❌ Operation failed after ${maxRetries + 1} attempts:`, (error as Error).message);
         throw error;
       }
       
       // Don't retry for validation errors or user errors
-      if (error.message.includes('validation') || error.message.includes('required') || error.message.includes('invalid')) {
+      if ((error as Error).message.includes('validation') || (error as Error).message.includes('required') || (error as Error).message.includes('invalid')) {
         throw error;
       }
       
@@ -89,20 +126,20 @@ export const retryOperation = async (operation, maxRetries = 3, delay = 1000) =>
     }
   }
   
-  throw lastError;
+  throw lastError!;
 };
 
 /**
  * Validate project data before operations
- * @param {Object} project - Project data to validate
- * @returns {Object} Validation result
+ * @param project - Project data to validate
+ * @returns Validation result
  */
-export const validateProjectData = (project) => {
-  const errors = [];
+export const validateProjectData = (project: Project): ValidationResult => {
+  const errors: string[] = [];
   
   if (!project) {
     errors.push('Project data is required');
-    return { isValid: false, errors };
+    return { isValid: false, errors, sanitized: project };
   }
   
   // Handle move operations (no validation needed)
@@ -147,11 +184,11 @@ export const validateProjectData = (project) => {
 
 /**
  * Create loading state for project operations
- * @param {string} operation - Operation being performed
- * @param {string} projectId - Project ID
- * @returns {Object} Loading state object
+ * @param operation - Operation being performed
+ * @param projectId - Project ID
+ * @returns Loading state object
  */
-export const createLoadingState = (operation, projectId) => ({
+export const createLoadingState = (operation: string, projectId: string): LoadingState => ({
   operation,
   projectId,
   timestamp: Date.now()
@@ -159,11 +196,11 @@ export const createLoadingState = (operation, projectId) => ({
 
 /**
  * Check if loading state is stale
- * @param {Object} loadingState - Loading state to check
- * @param {number} timeout - Timeout in milliseconds
- * @returns {boolean} True if stale
+ * @param loadingState - Loading state to check
+ * @param timeout - Timeout in milliseconds
+ * @returns True if stale
  */
-export const isStaleLoadingState = (loadingState, timeout = 30000) => {
+export const isStaleLoadingState = (loadingState: LoadingState | null | undefined, timeout: number = 30000): boolean => {
   if (!loadingState || !loadingState.timestamp) return true;
   return Date.now() - loadingState.timestamp > timeout;
-}; 
+};

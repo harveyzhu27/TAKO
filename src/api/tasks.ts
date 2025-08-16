@@ -93,6 +93,27 @@ export async function updateTask(
   return data.task;
 }
 
+// Reorder tasks in a list
+export async function reorderTasks(
+  projectId: string,
+  listId: string,
+  taskIds: string[]
+): Promise<void> {
+  const token = await getIdToken();
+  const res = await fetch(
+    `${API_URL}/projects/${projectId}/lists/${listId}/tasks/reorder`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ taskIds }),
+    }
+  );
+  if (!res.ok) throw new Error(`Failed to reorder tasks: ${res.status} ${res.statusText}`);
+}
+
 // Delete a task
 export async function deleteTask(
   projectId: string,

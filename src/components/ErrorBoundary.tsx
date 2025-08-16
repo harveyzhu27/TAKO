@@ -1,17 +1,27 @@
-import React from 'react';
+import React, { Component, ReactNode, ErrorInfo } from 'react';
 
-class ErrorBoundary extends React.Component {
-  constructor(props) {
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+}
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
 
-  static getDerivedStateFromError(error) {
+  static getDerivedStateFromError(): Partial<ErrorBoundaryState> {
     // Update state so the next render will show the fallback UI
     return { hasError: true };
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // Log error to console for debugging
     console.error('Error caught by boundary:', error, errorInfo);
     
@@ -22,7 +32,7 @@ class ErrorBoundary extends React.Component {
     });
   }
 
-  render() {
+  render(): ReactNode {
     if (this.state.hasError) {
       // You can render any custom fallback UI
       return (
@@ -36,11 +46,11 @@ class ErrorBoundary extends React.Component {
             >
               Refresh Page
             </button>
-            {process.env.NODE_ENV === 'development' && this.state.error && (
+            {typeof window !== 'undefined' && window.location.hostname === 'localhost' && this.state.error && (
               <details className="error-details">
                 <summary>Error Details (Development)</summary>
                 <pre>{this.state.error.toString()}</pre>
-                <pre>{this.state.errorInfo.componentStack}</pre>
+                <pre>{this.state.errorInfo?.componentStack}</pre>
               </details>
             )}
           </div>
@@ -52,4 +62,5 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-export default ErrorBoundary; 
+export default ErrorBoundary;
+

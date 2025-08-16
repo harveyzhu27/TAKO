@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
-import { getProjects, createProject, getFullProjectData } from './api/projects';
+import React, { useEffect, useState, ChangeEvent } from 'react';
+import { getProjects, createProject } from '../api/projects';
+import type { Project } from '@shared/models/ProjectModel';
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState([]);
-  const [newName, setNewName] = useState('');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [newName, setNewName] = useState<string>('');
   console.log('check that im using ProjectsPage')
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function ProjectsPage() {
       setProjects(p => [...p, proj]);
       setNewName('');
     } catch (e) {
-      alert(e.message);
+      alert((e as Error).message);
     }
   };
 
@@ -48,7 +49,7 @@ export default function ProjectsPage() {
       <div className="mt-4">
         <input
           value={newName}
-          onChange={e => setNewName(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setNewName(e.target.value)}
           placeholder="New project name"
           className="border p-1"
         />
@@ -59,3 +60,4 @@ export default function ProjectsPage() {
     </div>
   );
 }
+

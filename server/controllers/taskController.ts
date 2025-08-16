@@ -5,7 +5,7 @@ import type { QueryDocumentSnapshot, DocumentData, WriteBatch } from 'firebase-a
 import { createTask } from '../../shared/models/TaskModel';
 import { FieldValue } from 'firebase-admin/firestore';
 
-let currentTaskOrder = 0;
+// Remove global currentTaskOrder variable
 
 // Create a new task under a list
 export const createTaskController = async (req: Request, res: Response) => {
@@ -28,6 +28,18 @@ export const createTaskController = async (req: Request, res: Response) => {
     if (!listSnap.exists)
       return res.status(404).json({ error: 'List not found' });
 
+    // Get the current highest order in this list
+    const tasksSnap = await projectRef
+      .collection('lists')
+      .doc(listid)
+      .collection('tasks')
+      .orderBy('order', 'desc')
+      .limit(1)
+      .get();
+    
+    const currentHighestOrder = tasksSnap.empty ? -1 : tasksSnap.docs[0].data().order || 0;
+    const newOrder = currentHighestOrder + 1;
+
     // Create task object
     const taskId = getNewTaskId();
     const task = createTask({
@@ -36,8 +48,8 @@ export const createTaskController = async (req: Request, res: Response) => {
       name,
       projectId: projectid,
       listId: listid,
-      dueDate: req.body.dueDate ?? null,
-      order: currentTaskOrder++,
+      dueDate: req.body.dueDate !== undefined ? req.body.dueDate : null,
+      order: newOrder,
     });
 
     // Use batch operations for better performance
@@ -76,6 +88,8 @@ export const getTasksController = async (req: Request, res: Response) => {
     const uid = (req as any).user.uid;
     const { projectid, listid } = req.params;
 
+    console.log('🔄 getTasksController called for:', { projectid, listid, uid });
+
     const projectRef = db.collection('projects').doc(projectid);
     const projectSnap = await projectRef.get();
     if (!projectSnap.exists || projectSnap.data()?.uid !== uid)
@@ -87,6 +101,9 @@ export const getTasksController = async (req: Request, res: Response) => {
       .collection('tasks')
       .get();
     const tasks = tasksSnap.docs.map((d: QueryDocumentSnapshot<DocumentData>) => d.data());
+    
+    console.log('🔄 getTasksController: Returning tasks with order fields:', tasks.map(t => ({ id: t.id, name: t.name, order: t.order })));
+    
     res.status(200).json({ tasks });
   } catch (err) {
     console.error(err);
@@ -182,6 +199,46 @@ export const updateTaskController = async (req: Request, res: Response) => {
 
   } catch (err) {
     console.error("🔥 ERROR in updateTaskController:", err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
+// Reorder tasks in a list
+export const reorderTasksController = async (req: Request, res: Response) => {
+  try {
+    const uid = (req as any).user.uid;
+    const { projectid, listid } = req.params;
+    const { taskIds } = req.body;
+
+    if (!Array.isArray(taskIds)) {
+      return res.status(400).json({ error: 'taskIds must be an array' });
+    }
+
+    // Verify user owns the project
+    const projectRef = db.collection('projects').doc(projectid);
+    const projectSnap = await projectRef.get();
+    if (!projectSnap.exists || projectSnap.data()?.uid !== uid) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Verify list exists
+    const listRef = projectRef.collection('lists').doc(listid);
+    const listSnap = await listRef.get();
+    if (!listSnap.exists) {
+      return res.status(404).json({ error: 'List not found' });
+    }
+
+    // Update order for each task
+    const batch: WriteBatch = db.batch();
+    taskIds.forEach((taskId: string, index: number) => {
+      const taskRef = listRef.collection('tasks').doc(taskId);
+      batch.update(taskRef, { order: index });
+    });
+
+    await batch.commit();
+    res.status(200).json({ message: 'Tasks reordered successfully' });
+  } catch (err) {
+    console.error("🔥 ERROR in reorderTasksController:", err);
     return res.status(500).json({ error: 'Server error' });
   }
 };

@@ -1,14 +1,14 @@
-// src/components/SignUp.jsx
-import React, { useState } from "react";
-import { useAuthContext } from "../hooks/useAuth.jsx";
+// src/components/SignUp.tsx
+import React, { useState, FormEvent, ChangeEvent } from "react";
+import { useAuthContext } from "../hooks/useAuth.tsx";
 
 export default function SignUp() {
   const { signUp } = useAuthContext();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     try {
@@ -16,7 +16,7 @@ export default function SignUp() {
       setEmail("");
       setPassword("");
     } catch (err) {
-      setError(err.message);
+      setError((err as Error).message);
     }
   }
 
@@ -27,17 +27,18 @@ export default function SignUp() {
         type="email"
         placeholder="Email"
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
         required
       />
       <input
         type="password"
         placeholder="Password"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
         required
       />
       <button type="submit">Sign Up</button>
     </form>
   );
 }
+

@@ -1,45 +1,58 @@
-import React, { useEffect, useState, useCallback, useRef, Suspense, useMemo } from 'react';
-import HabitTracker from './HabitTracker.jsx';
-import DoNowList from './DoNowList.jsx';
+import React, { useEffect, useState, useCallback, useRef, Suspense, ChangeEvent, KeyboardEvent } from 'react';
+import HabitTracker from './HabitTracker';
+import DoNowList from './DoNowList';
 
-import { useCurrentTime } from '../hooks/useCurrentTime.js';
-import { formatDeadline, getDeadlineClass } from '../utils/dateUtils.js';
-import { validateThoughts } from '../utils/validation.js';
+
+import { validateThoughts } from '../utils/validation';
 import './HomePage.css';
+import type { ProjectSummary } from '@shared/models/ProjectModel';
+import type { Task } from '@shared/models/TaskModel';
+
+interface HomePageProps {
+  projectSummaries: ProjectSummary[];
+  refreshProjectSummaries: () => Promise<void>;
+  doNowTasks?: Task[];
+  doNowTaskCount?: number;
+  tasksCompletedToday?: number;
+  setCurrentProject: (projectId: string | null) => void;
+  addTask: (projectId: string, listId: string, taskName: string, dueDate?: number) => Promise<void>;
+  deleteTask: (projectId: string, listId: string, taskId: string) => Promise<void>;
+  updateTask: (projectId: string, listId: string, taskId: string, updates: Partial<Task>) => Promise<void>;
+  loadingDoNow?: boolean;
+  loadingTasks?: Set<string>;
+  loadingInitialData?: boolean;
+}
 
 const HomePageComponent = React.lazy(() => Promise.resolve({
   default: function HomePageComponent({ 
     projectSummaries, 
     refreshProjectSummaries, 
     doNowTasks = [], 
-    doNowTaskCount = 0, 
     tasksCompletedToday = 0, 
-    setCurrentProject, 
     addTask, 
     deleteTask, 
     updateTask,
     loadingDoNow = false,
-    loadingTasks = new Set(),
     loadingInitialData = false
-  }) {
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [lastRefreshTime, setLastRefreshTime] = useState(Date.now());
-    const currentTime = useCurrentTime(); // Use custom hook for efficient time updates
-    const refreshTimeout = useRef(null);
+  }: HomePageProps) {
+    const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+    const [lastRefreshTime, setLastRefreshTime] = useState<number>(Date.now());
+
+    const refreshTimeout = useRef<number | null>(null);
 
     // Debounced background refresh function
     const backgroundRefresh = useCallback(async (immediate = false) => {
       if (isRefreshing) return; // Prevent multiple simultaneous refreshes
       
       // Clear any pending timeout
-      if (refreshTimeout.current) {
-        clearTimeout(refreshTimeout.current);
-        refreshTimeout.current = null;
-      }
+              if (refreshTimeout.current) {
+          window.clearTimeout(refreshTimeout.current);
+          refreshTimeout.current = null;
+        }
       
       // If not immediate, debounce the refresh
       if (!immediate) {
-        refreshTimeout.current = setTimeout(() => {
+        refreshTimeout.current = window.setTimeout(() => {
           backgroundRefresh(true);
         }, 2000); // 2 second debounce
         return;
@@ -87,10 +100,8 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
       return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [backgroundRefresh, lastRefreshTime]);
 
-
-
     // Persistent thoughts box state with validation
-    const [thoughts, setThoughts] = useState(() => {
+    const [thoughts, setThoughts] = useState<string>(() => {
       const saved = localStorage.getItem('tako-thoughts');
       if (saved) {
         const validation = validateThoughts(saved);
@@ -99,7 +110,7 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
       return '';
     });
     
-    const handleThoughtsChange = useCallback((e) => {
+    const handleThoughtsChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
       const newValue = e.target.value;
       const validation = validateThoughts(newValue);
       
@@ -119,13 +130,7 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
       return sum + (project.taskCount || 0);
     }, 0);
 
-    // Memoized date calculations using utility functions
-    const memoizedDateCalculations = useMemo(() => {
-      return {
-        formatDeadline: (daysFromNow) => formatDeadline(daysFromNow, currentTime),
-        deadlineClass: (daysFromNow) => getDeadlineClass(daysFromNow, currentTime)
-      };
-    }, [currentTime]);
+
 
     // Calculate due today and due tomorrow counts from project summaries
     // This is much more efficient than filtering allTasks
@@ -212,11 +217,11 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
                 placeholder="Type your thoughts here..."
                 value={thoughts}
                 onChange={handleThoughtsChange}
-                onKeyDown={(e) => {
+                onKeyDown={(e: KeyboardEvent<HTMLTextAreaElement>) => {
                   // Handle space key explicitly
                   if (e.key === ' ') {
                     e.preventDefault();
-                    const target = e.target;
+                    const target = e.currentTarget;
                     const start = target.selectionStart;
                     const end = target.selectionEnd;
                     const newValue = thoughts.substring(0, start) + ' ' + thoughts.substring(end);
@@ -229,7 +234,7 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
                   // Handle enter key to add new line
                   if (e.key === 'Enter') {
                     e.preventDefault();
-                    const target = e.target;
+                    const target = e.currentTarget;
                     const start = target.selectionStart;
                     const end = target.selectionEnd;
                     const newValue = thoughts.substring(0, start) + '\n' + thoughts.substring(end);
@@ -253,7 +258,7 @@ const HomePageComponent = React.lazy(() => Promise.resolve({
   }
 }));
 
-function HomePage(props) {
+function HomePage(props: HomePageProps) {
   return (
     <Suspense fallback={<div className="home-page-loading">Loading home page...</div>}>
       <HomePageComponent {...props} />
@@ -261,4 +266,5 @@ function HomePage(props) {
   );
 }
 
-export default HomePage; 
+export default HomePage;
+

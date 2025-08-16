@@ -5,20 +5,20 @@ interface PerformanceMetric {
   startTime: number;
   endTime?: number;
   duration?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 class PerformanceMonitor {
   private metrics: Map<string, PerformanceMetric[]> = new Map();
-  private isEnabled = process.env.NODE_ENV === 'development';
+  private isEnabled = typeof window !== 'undefined' && window.location.hostname === 'localhost';
 
   /**
    * Start timing an operation
    */
-  start(operation: string, metadata?: Record<string, any>): string {
+  start(operation: string, metadata?: Record<string, unknown>): string {
     if (!this.isEnabled) return '';
     
-    const id = `${operation}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const metric: PerformanceMetric = {
       operation,
       startTime: performance.now(),
@@ -30,13 +30,13 @@ class PerformanceMonitor {
     }
     this.metrics.get(operation)!.push(metric);
     
-    return id;
+    return '';
   }
 
   /**
    * End timing an operation
    */
-  end(operation: string, id?: string): void {
+  end(operation: string): void {
     if (!this.isEnabled) return;
     
     const operationMetrics = this.metrics.get(operation);
@@ -82,7 +82,7 @@ class PerformanceMonitor {
     if (!this.isEnabled) return;
     
     console.group('📊 Performance Summary');
-    for (const [operation, metrics] of this.metrics.entries()) {
+    for (const [operation] of this.metrics.entries()) {
       const summary = this.getSummary(operation);
       if (summary) {
         console.log(`${operation}:`, {
@@ -108,11 +108,11 @@ class PerformanceMonitor {
 export const performanceMonitor = new PerformanceMonitor();
 
 // Convenience functions
-export const startTiming = (operation: string, metadata?: Record<string, any>) => 
+export const startTiming = (operation: string, metadata?: Record<string, unknown>) => 
   performanceMonitor.start(operation, metadata);
 
-export const endTiming = (operation: string, id?: string) => 
-  performanceMonitor.end(operation, id);
+export const endTiming = (operation: string) => 
+  performanceMonitor.end(operation);
 
 export const logPerformanceSummary = () => 
   performanceMonitor.logSummary();

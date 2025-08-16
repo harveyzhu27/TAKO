@@ -1,42 +1,44 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { useCurrentTime } from '../../hooks/useCurrentTime.js';
-import { useClickOutside } from '../../hooks/useClickOutside.js';
-import { formatDeadline, getDeadlineClass } from '../../utils/dateUtils.js';
+import React, { useState, useMemo, useCallback, ChangeEvent, KeyboardEvent, DragEvent } from 'react';
+import { useCurrentTime } from '../../hooks/useCurrentTime';
+import { useClickOutside } from '../../hooks/useClickOutside';
+import { formatDeadline, getDeadlineClass } from '../../utils/dateUtils';
 import './TaskList.css';
-// import SubtaskList from '../SubtaskList/SubtaskList';
+import type { Task } from '@shared/models/TaskModel';
+
+interface TaskListProps {
+  projectId: string;
+  listId: string;
+  tasks: Task[];
+  addTask: (projectId: string, listId: string, taskName: string, dueDate?: number) => Promise<boolean>;
+  deleteTask: (projectId: string, listId: string, taskId: string) => Promise<void>;
+  updateTask: (projectId: string, listId: string, taskId: string, updates: Partial<Task>) => Promise<void>;
+  onReorder: (taskIds: string[]) => void;
+  loadingTasks?: Set<string>;
+}
 
 function TaskList({
   projectId,
   listId,
   tasks,
-  addTask,
   deleteTask,
   updateTask,
-  // addSubtask,
-  // deleteSubtask,
-  // updateSubtask,
+  onReorder,
   loadingTasks = new Set(),
-}) {
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [editDeadline, setEditDeadline] = useState('');
-  const [menuOpenId, setMenuOpenId] = useState(null);
-  // const [showSubtaskInput, setShowSubtaskInput] = useState(false);
-  // const [newSubtaskName, setNewSubtaskName] = useState('');
-  // const [newSubtaskDeadline, setNewSubtaskDeadline] = useState('');
-  const currentTime = useCurrentTime(); // Use centralized time hook
+}: TaskListProps) {
 
-  // Track which tasks have their subtasks collapsed
-  const [collapsedTasks, setCollapsedTasks] = useState({});
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editName, setEditName] = useState<string>('');
+  const [editDeadline, setEditDeadline] = useState<string>('');
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const currentTime = useCurrentTime();
+
+
 
   // Use custom hooks for click outside handling
   const menuRef = useClickOutside(() => setMenuOpenId(null));
   const editRef = useClickOutside(() => {
     setEditingTaskId(null);
-    // setShowSubtaskInput(false);
   }, [editingTaskId]);
-
-
 
   // Memoized sorting function to prevent unnecessary re-computations
   const sortedTasks = useMemo(() => {
@@ -46,9 +48,21 @@ function TaskList({
         const aDone = !!a.completedAt;
         const bDone = !!b.completedAt;
         if (aDone !== bDone) return aDone ? 1 : -1;
-        if (a.order !== undefined && b.order !== undefined && a.order !== b.order) {
+        
+        // First try to sort by order field
+        if (a.order !== undefined && b.order !== undefined) {
           return a.order - b.order;
         }
+        
+        // If order is missing, fall back to creation time
+        if (a.order === undefined && b.order === undefined) {
+          return a.createdAt - b.createdAt;
+        }
+        
+        // If one has order and the other doesn't, prioritize the one with order
+        if (a.order !== undefined) return -1;
+        if (b.order !== undefined) return 1;
+        
         return a.createdAt - b.createdAt;
       });
   }, [tasks]);
@@ -56,17 +70,64 @@ function TaskList({
   // Memoized date calculations using utility functions
   const memoizedDateCalculations = useMemo(() => {
     return {
-      formatDeadline: (daysFromNow) => formatDeadline(daysFromNow, currentTime),
-      deadlineClass: (daysFromNow) => getDeadlineClass(daysFromNow, currentTime)
+      formatDeadline: (daysFromNow: number) => formatDeadline(daysFromNow, currentTime),
+      deadlineClass: (daysFromNow: number) => getDeadlineClass(daysFromNow, currentTime)
     };
   }, [currentTime]);
 
-  return (sortedTasks ?? []).map(task => {
-    const isCollapsed = !!collapsedTasks[task.id] || !!task.completedAt;
+  // Simple drag and drop
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+
+  const handleDragStart = useCallback((e: DragEvent<HTMLDivElement>, taskId: string) => {
+    e.dataTransfer.setData('text/plain', taskId);
+    setDraggedTaskId(taskId);
+  }, []);
+
+  const handleDragEnd = useCallback(() => {
+    setDraggedTaskId(null);
+  }, []);
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  }, []);
+
+  const handleDrop = useCallback((e: DragEvent<HTMLDivElement>, targetTaskId: string) => {
+    e.preventDefault();
+    const draggedTaskId = e.dataTransfer.getData('text/plain');
+    
+    if (draggedTaskId && targetTaskId && draggedTaskId !== targetTaskId && onReorder) {
+      // Simple reorder: move dragged task to target position
+      const taskIds = tasks.map(task => task.id);
+      const draggedIndex = taskIds.indexOf(draggedTaskId);
+      const targetIndex = taskIds.indexOf(targetTaskId);
+      
+      if (draggedIndex !== -1 && targetIndex !== -1) {
+        // Remove dragged task and insert at target position
+        taskIds.splice(draggedIndex, 1);
+        taskIds.splice(targetIndex, 0, draggedTaskId);
+        
+        onReorder(taskIds);
+      }
+    }
+    setDraggedTaskId(null);
+  }, [tasks, onReorder]);
+
+  // Render function for individual task
+  const renderTask = useCallback((task: Task) => {
     const isTaskLoading = loadingTasks.has(task.id);
     
     return (
-      <div className={`task-block ${isTaskLoading ? 'task-loading' : ''}`} key={`${listId}-${task.id}`}>
+      <div 
+        className={`task-block ${isTaskLoading ? 'task-loading' : ''} ${
+          draggedTaskId === task.id ? 'dragging' : ''
+        }`}
+        draggable={!isTaskLoading}
+        onDragStart={(e: DragEvent<HTMLDivElement>) => handleDragStart(e, task.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDrop={(e: DragEvent<HTMLDivElement>) => handleDrop(e, task.id)}
+        key={task.id}
+      >
         {isTaskLoading && (
           <div className="task-loading-overlay">
             <div className="loading-spinner">⟳</div>
@@ -96,8 +157,8 @@ function TaskList({
                   className="task-name-edit"
                   value={editName}
                   autoFocus
-                  onChange={e => setEditName(e.target.value)}
-                  onKeyDown={e => {
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                     if (e.key === 'Enter') {
                       updateTask(projectId, listId, task.id, {
                         name: editName,
@@ -116,8 +177,8 @@ function TaskList({
                   min="0"
                   value={editDeadline}
                   placeholder="0"
-                  onChange={e => setEditDeadline(e.target.value)}
-                  onKeyDown={e => {
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setEditDeadline(e.target.value)}
+                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                     if (e.key === 'Enter') {
                       updateTask(projectId, listId, task.id, {
                         name: editName,
@@ -130,57 +191,6 @@ function TaskList({
                     }
                   }}
                 />
-                {/* Subtask input section commented out - subtasks disabled
-                {showSubtaskInput ? (
-                  <div className="subtask-input-block">
-                    <input
-                      className="subtask-name-input"
-                      type="text"
-                      placeholder="Subtask name"
-                      value={newSubtaskName}
-                      onChange={e => setNewSubtaskName(e.target.value)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter') {
-                          const trimmed = newSubtaskName.trim();
-                          if (trimmed !== '') {
-                            addSubtask(
-                              projectId,
-                              listId,
-                              task.id,
-                              trimmed,
-                              newSubtaskDeadline === ''
-                                ? null
-                                : Number(newSubtaskDeadline)
-                            );
-                            setNewSubtaskName('');
-                            setNewSubtaskDeadline('');
-                          }
-                        }
-                        if (e.key === 'Escape') {
-                          setShowSubtaskInput(false);
-                          setNewSubtaskName('');
-                          setNewSubtaskDeadline('');
-                        }
-                      }}
-                    />
-                    <input
-                      className="subtask-date-input"
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={newSubtaskDeadline}
-                      onChange={e => setNewSubtaskDeadline(e.target.value)}
-                    />
-                  </div>
-                ) : (
-                  <button
-                    className="add-subtask-button"
-                    onClick={() => setShowSubtaskInput(true)}
-                  >
-                    ↳
-                  </button>
-                )}
-                */}
               </>
             ) : (
               <>
@@ -193,7 +203,7 @@ function TaskList({
                   }}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => {
+                  onKeyDown={(e: KeyboardEvent<HTMLSpanElement>) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
                       setEditingTaskId(task.id);
@@ -204,9 +214,6 @@ function TaskList({
                   aria-label={`Edit ${task.name} task`}
                 >
                   {task.name}
-                  {/* {task.subtaskCount > 0 && (
-                    <span className="subtask-count"> ({task.subtaskCount})</span>
-                  )} */}
                 </span>
                 {task.dueDate ? (
                   <span className={`task-deadline ${memoizedDateCalculations.deadlineClass(task.dueDate)}`}>
@@ -227,20 +234,6 @@ function TaskList({
                   </button>
                   {menuOpenId === task.id && (
                     <div className="task-menu-dropdown" ref={menuRef} role="menu" aria-label={`${task.name} task options`}>
-                      {/* <button
-                        className="task-menu-item"
-                        onClick={() => {
-                          setCollapsedTasks(prev => ({
-                            ...prev,
-                            [task.id]: !prev[task.id],
-                          }));
-                          setMenuOpenId(null);
-                        }}
-                        role="menuitem"
-                        aria-label={`${isCollapsed ? 'Expand' : 'Collapse'} subtasks for ${task.name}`}
-                      >
-                        {isCollapsed ? 'Expand Subtasks' : 'Collapse Subtasks'}
-                      </button> */}
                       <button
                         className="task-menu-item"
                         onClick={() => {
@@ -259,28 +252,21 @@ function TaskList({
             )}
           </div>
         </div>
-
-        {/* Show subtasks - commented out - subtasks disabled
-        {!isCollapsed && task.subtasks?.length > 0 && (
-          <div className="subtask-wrapper">
-            <SubtaskList
-              projectId={projectId}
-              listId={listId}
-              taskId={task.id}
-              subtasks={task.subtasks}
-              addSubtask={addSubtask}
-              checkSubtask={updateSubtask}
-              deleteSubtask={deleteSubtask}
-              editSubtask={updateSubtask}
-            />
-          </div>
-        )}
-        */}
       </div>
     );
-  });
+  }, [loadingTasks, editingTaskId, editName, editDeadline, memoizedDateCalculations, projectId, listId, updateTask, deleteTask, setEditingTaskId, setEditName, setEditDeadline, setMenuOpenId, menuOpenId, menuRef, editRef, handleDragStart, handleDragEnd, handleDragOver, handleDrop, draggedTaskId]);
+
+  // Return the task list with drag and drop
+  return (
+    <div className="task-list">
+      {sortedTasks.map((task) => (
+        <div key={task.id}>
+          {renderTask(task)}
+        </div>
+      ))}
+    </div>
+  );
 }
 
-
-
 export default React.memo(TaskList);
+

@@ -1,22 +1,39 @@
-// SubtaskList.jsx
+// SubtaskList.tsx
 import React, { useState } from 'react';
 import './SubtaskList.css';
+
+interface Subtask {
+  id: string;
+  name: string;
+  completedAt?: number | null;
+  dueDate?: number | null;
+}
+
+interface SubtaskListProps {
+  projectId: string;
+  listId: string;
+  taskId: string;
+  subtasks?: Subtask[];
+  addSubtask: (projectId: string, listId: string, taskId: string, subtask: Partial<Subtask>) => void;
+  checkSubtask: (projectId: string, listId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => void;
+  deleteSubtask: (projectId: string, listId: string, taskId: string, subtaskId: string) => void;
+  editSubtask: (projectId: string, listId: string, taskId: string, subtaskId: string, updates: Partial<Subtask>) => void;
+}
 
 function SubtaskList({
   projectId,
   listId,
   taskId,
   subtasks = [],
-  addSubtask,
   checkSubtask,
   deleteSubtask,
   editSubtask,
-}) {
-  const [editingSubtask, setEditingSubtask] = useState(null);
-  const [subtaskNameEdit, setSubtaskNameEdit] = useState('');
-  const [subtaskDeadlineEdit, setSubtaskDeadlineEdit] = useState('');
+}: SubtaskListProps) {
+  const [editingSubtask, setEditingSubtask] = useState<string | null>(null);
+  const [subtaskNameEdit, setSubtaskNameEdit] = useState<string>('');
+  const [subtaskDeadlineEdit, setSubtaskDeadlineEdit] = useState<string>('');
 
-  function handleSave(subId) {
+  function handleSave(subId: string) {
     const trimmedName = subtaskNameEdit.trim();
     if (trimmedName === '') return;
 
@@ -37,7 +54,7 @@ function SubtaskList({
     setEditingSubtask(null);
   }
 
-  function dateDisplay(number) {
+  function dateDisplay(number: number | null | undefined | string): string {
     if (number === null || number === undefined || number === '') return '';
     if (number === 0) return 'Due Today';
     if (number === 1) return 'Due Tomorrow';
@@ -60,10 +77,10 @@ function SubtaskList({
           key={subtask.id}
           className="subtask-container"
           tabIndex={0}
-          onBlur={(e) => {
+          onBlur={(e: React.FocusEvent<HTMLDivElement>) => {
             if (
               editingSubtask === subtask.id &&
-              !e.currentTarget.contains(e.relatedTarget)
+              !e.currentTarget.contains(e.relatedTarget as Node)
             ) {
               handleSave(subtask.id);
             }
@@ -74,7 +91,7 @@ function SubtaskList({
               <input
                 type="checkbox"
                 checked={!!subtask.completedAt}
-                onChange={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                   e.stopPropagation();
                   checkSubtask(projectId, listId, taskId, subtask.id, {
                     completedAt: subtask.completedAt ? null : Date.now(),
@@ -87,8 +104,8 @@ function SubtaskList({
                     className="subtask-name-edit"
                     value={subtaskNameEdit}
                     autoFocus
-                    onChange={(e) => setSubtaskNameEdit(e.target.value)}
-                    onKeyDown={(e) => {
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSubtaskNameEdit(e.target.value)}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                       if (e.key === 'Enter') handleSave(subtask.id);
                       if (e.key === 'Escape') {
                         setEditingSubtask(null);
@@ -100,8 +117,8 @@ function SubtaskList({
                     type="number"
                     value={subtaskDeadlineEdit}
                     placeholder="Due in..."
-                    onChange={(e) => setSubtaskDeadlineEdit(e.target.value)}
-                    onKeyDown={(e) => {
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSubtaskDeadlineEdit(e.target.value)}
+                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                       if (e.key === 'Enter') handleSave(subtask.id);
                       if (e.key === 'Escape') {
                         setEditingSubtask(null);
@@ -125,7 +142,7 @@ function SubtaskList({
                     onClick={() => {
                       setEditingSubtask(subtask.id);
                       setSubtaskNameEdit(subtask.name);
-                      setSubtaskDeadlineEdit(subtask.dueDate ?? '');
+                      setSubtaskDeadlineEdit(subtask.dueDate?.toString() ?? '');
                     }}
                   >
                     {subtask.name}

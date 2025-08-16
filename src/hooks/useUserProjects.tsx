@@ -1,15 +1,13 @@
 // useUserProjects.ts
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useAuthContext } from "./useAuth.jsx";
+import { useAuthContext } from "./useAuth";
 import type { Project, ProjectSummary } from "@shared/models/ProjectModel";
 import type { List } from "@shared/models/ListModel";
 import type { Task, TaskUpdate } from "@shared/models/TaskModel";
 // import type { Subtask, SubtaskUpdate } from "@shared/models/SubtaskModel";
-import { getIdToken } from "firebase/auth";
 import { startTiming, endTiming } from "../utils/performanceUtils";
 
 import {
-  getAllProjects as apiGetAllProjects,
   createProject as apiCreateProject,
   deleteProject as apiDeleteProject,
   updateProject as apiUpdateProject,
@@ -26,6 +24,7 @@ import {
   createTask as apiCreateTask,
   deleteTask as apiDeleteTask,
   updateTask as apiUpdateTask,
+  reorderTasks as apiReorderTasks,
 } from "../api/tasks";
 // import {
 //   getSubtasks as apiGetSubtasks,
@@ -65,7 +64,7 @@ export default function useUserProjects() {
   const [refreshKey, setRefreshKey] = useState(0);
   
   // Request deduplication to prevent duplicate API calls
-  const pendingRequests = useRef<Map<string, Promise<any>>>(new Map());
+  const pendingRequests = useRef<Map<string, Promise<unknown>>>(new Map());
   
   // Function to force a full refresh from backend
   const forceRefresh = useCallback(() => setRefreshKey(k => k + 1), []);
@@ -90,11 +89,10 @@ export default function useUserProjects() {
   
   // Function to check and clear expired cache entries
   const clearExpiredCache = useCallback(() => {
-    const now = Date.now();
     const expiredProjects: string[] = [];
     
     cacheExpiry.current.forEach((expiry, projectId) => {
-      if (now > expiry) {
+      if (Date.now() > expiry) {
         expiredProjects.push(projectId);
       }
     });
@@ -116,7 +114,7 @@ export default function useUserProjects() {
   const setProjectDataWithExpiry = useCallback((projectId: string, data: List[]) => {
     setProjectData(prev => ({ ...prev, [projectId]: data }));
     cacheExpiry.current.set(projectId, Date.now() + CACHE_DURATION);
-  }, []);
+  }, [CACHE_DURATION]);
   
   // Clear expired cache every 5 minutes
   useEffect(() => {
@@ -127,10 +125,10 @@ export default function useUserProjects() {
   // Request deduplication helper
   const deduplicatedRequest = useCallback(async (
     key: string, 
-    requestFn: () => Promise<any>
-  ): Promise<any> => {
+    requestFn: () => Promise<unknown>
+  ): Promise<unknown> => {
     if (pendingRequests.current.has(key)) {
-      return pendingRequests.current.get(key);
+      return pendingRequests.current.get(key)!;
     }
     
     const promise = requestFn();
@@ -181,20 +179,19 @@ export default function useUserProjects() {
   );
 
 
-  const resetAll = useCallback(() => {
-    setProjectSummaries([]);
-    setCurrentProject(null);
-    setProjectData({});
-    setError(null);
-    setLoading(false);
-  }, []);
+
 
   const updateProjectData = useCallback(
     (projectId: string, updater: (lists: List[]) => List[]) => {
-      setProjectData(prev => ({
-        ...prev,
-        [projectId]: updater(prev[projectId] ?? [])
-      }));
+      console.log('🔄 updateProjectData called for project:', projectId);
+      setProjectData(prev => {
+        const newData = {
+          ...prev,
+          [projectId]: updater(prev[projectId] ?? [])
+        };
+        console.log('🔄 updateProjectData: New state for project:', projectId, newData[projectId]?.map(l => ({ id: l.id, name: l.name, taskCount: l.tasks?.length })));
+        return newData;
+      });
     }, []);
 
 
@@ -230,18 +227,9 @@ export default function useUserProjects() {
     } catch (err: unknown) {
       console.error("🔴 loadDoNowTasks failed:", (err as Error).message);
     }
-  }, [currentUser, projectData]);
+  }, [currentUser, projectData, deduplicatedRequest]);
 
-  // Load all tasks across all projects for due today/tomorrow display
-  // This is now optimized - we get due counts from project summaries instead
-  const loadAllTasks = useCallback(async () => {
-    if (!currentUser) return;
-    
-    // Since we now get due today/tomorrow counts from project summaries,
-    // we don't need to fetch all tasks just for display purposes
-    // This significantly improves performance
-    // setAllTasks([]); // Removed - no longer needed
-  }, [currentUser]);
+
 
   // Load Do Now tasks when user logs in or changes
   useEffect(() => {
@@ -324,8 +312,8 @@ export default function useUserProjects() {
         ).length;
         
         setTasksCompletedToday(doNowCompleted + projectCompleted);
-      } catch (e: any) {
-        setError(e.message ?? "Failed to load project data");
+      } catch (e: unknown) {
+        setError((e as Error).message ?? "Failed to load project data");
       } finally {
         endTiming('loadProjectData', timingId);
         setLoading(false);
@@ -362,8 +350,8 @@ export default function useUserProjects() {
 
 
       return newProject;
-    } catch (e: any) {
-      setError(e.message ?? "Unable to create project");
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Unable to create project");
       throw e;
     } finally {
       setLoadingSidebar(false);
@@ -386,8 +374,8 @@ export default function useUserProjects() {
           ? projectSummaries[0]?.id ?? null
           : curr
       );
-    } catch (e: any) {
-      setError(e.message ?? "Unable to delete project");
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Unable to delete project");
       throw e;
     } finally {
       setLoadingSidebar(false);
@@ -409,8 +397,8 @@ export default function useUserProjects() {
       };
       setProjectSummaries(prev => prev.map(p => p.id === projectId ? updatedSummary : p));
       return updatedProject;
-    } catch (e: any) {
-      setError(e.message ?? "Unable to update project");
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Unable to update project");
       throw e;
     } finally {
       setLoadingSidebar(false);
@@ -424,7 +412,7 @@ export default function useUserProjects() {
     } catch (err: unknown) {
       console.error("🔴 refreshProjectSummaries failed:", (err as Error).message);
     }
-  }, []);
+  }, [deduplicatedRequest]);
 
   // Load initial project summaries when user logs in
   useEffect(() => {
@@ -463,7 +451,6 @@ export default function useUserProjects() {
   // Reset tasks completed today at midnight
   useEffect(() => {
     const checkDateChange = () => {
-      const now = new Date();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
@@ -522,7 +509,7 @@ export default function useUserProjects() {
     } catch (err: unknown) {
       console.error("🔴 refreshCurrentProjectData failed:", (err as Error).message);
     }
-  }, [currentProject, apiGetLists, apiGetTasks, setProjectDataWithExpiry]);
+  }, [currentProject, setProjectDataWithExpiry]);
 
 
 
@@ -540,8 +527,8 @@ export default function useUserProjects() {
       ]);
       await refreshProjectSummaries();
       return newList;
-    } catch (e: any) {
-      setError(e.message ?? "Unable to create list");
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Unable to create list");
       throw e;
     } finally {
       setLoadingProjectContent(false);
@@ -558,9 +545,9 @@ export default function useUserProjects() {
           (lists ?? []).filter(l => l.id !== listId)
         );
         await refreshProjectSummaries();
-      } catch (e: any) {
-        setError(e.message ?? "Unable to delete list");
-        throw e;
+          } catch (e: unknown) {
+      setError((e as Error).message ?? "Unable to delete list");
+      throw e;
       } finally {
         setLoadingProjectContent(false);
       }
@@ -586,9 +573,9 @@ export default function useUserProjects() {
           )
         );
         return updated;
-      } catch (e: any) {
-        setError(e.message ?? "Unable to update list");
-        throw e;
+          } catch (e: unknown) {
+      setError((e as Error).message ?? "Unable to delete list");
+      throw e;
       } finally {
         setLoadingProjectContent(false);
       }
@@ -618,14 +605,14 @@ const moveList = useCallback(
 
       const updatedLists = await apiGetLists(projectId);
       setProjectDataWithExpiry(projectId, updatedLists);
-    } catch (e: any) {
-      setError(e.message ?? "Unable to move list");
+    } catch (e: unknown) {
+      setError((e as Error).message ?? "Unable to move list");
       throw e;
     } finally {
       setLoadingProjectContent(false);
     }
   },
-  [projectData, updateProjectData]
+  [projectData, setProjectDataWithExpiry]
 );
 
 
@@ -738,7 +725,7 @@ const moveList = useCallback(
         }
         
         return newTask;
-      } catch (e: any) {
+      } catch (e: unknown) {
         // Revert optimistic updates on error
         if (listId === 'do-now') {
           setDoNowTasks(prev => prev.filter(t => t.id !== optimisticTaskId));
@@ -772,7 +759,7 @@ const moveList = useCallback(
           );
         }
         
-        setError(e.message ?? "Unable to create task");
+        setError((e as Error).message ?? "Unable to create task");
         throw e; // Re-throw so UI can handle the error
       } finally {
         if (listId === 'do-now') {
@@ -784,6 +771,31 @@ const moveList = useCallback(
     },
     [updateProjectData, currentUser]
   );
+
+  // REORDER tasks in a list
+  const reorderTasks = useCallback(async (projectId: string, listId: string, taskIds: string[]) => {
+    try {
+      // Call the API to reorder tasks
+      await apiReorderTasks(projectId, listId, taskIds);
+      
+      // Update local state to reflect the new order
+      updateProjectData(projectId, lists =>
+        lists.map(list =>
+          list.id === listId
+            ? {
+                ...list,
+                tasks: taskIds.map(taskId => 
+                  list.tasks.find(t => t.id === taskId)
+                ).filter((task): task is Task => task !== undefined)
+              }
+            : list
+        )
+      );
+    } catch (error) {
+      console.error('Failed to reorder tasks:', error);
+      throw error;
+    }
+  }, [updateProjectData]);
 
   // UPDATE a task
   const updateTask = useCallback(
@@ -1069,12 +1081,12 @@ const moveList = useCallback(
         }
         
         return updated;
-      } catch (e: any) {
-        setError(e.message ?? "Unable to update task");
+      } catch (e: unknown) {
+        setError((e as Error).message ?? "Unable to update task");
         throw e;
       }
     },
-    [updateProjectData, doNowTasks]
+    [updateProjectData, doNowTasks, loadDoNowTasks, projectData]
   );
 
   // DELETE a task
@@ -1155,8 +1167,8 @@ const moveList = useCallback(
           // Mark that sync is needed
           setNeedsSync(true);
         }
-      } catch (e: any) {
-        setError(e.message ?? "Unable to delete task");
+      } catch (e: unknown) {
+        setError((e as Error).message ?? "Unable to delete task");
         throw e;
       } finally {
         if (listId === 'do-now') {
@@ -1171,7 +1183,7 @@ const moveList = useCallback(
         });
       }
     },
-    [updateProjectData]
+    [updateProjectData, doNowTasks]
   );
 
   // ADD a subtask (commented out - subtasks disabled)
@@ -1321,6 +1333,7 @@ const moveList = useCallback(
     addTask,
     updateTask,
     deleteTask,
+    reorderTasks,
 
     // subtask‐level actions (commented out - subtasks disabled)
     // addSubtask,

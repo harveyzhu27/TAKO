@@ -116,16 +116,21 @@ export const getProjectSummariesController = async (req: Request, res: Response)
         // Get all lists for this project
         const listsSnapshot = await db.collection('projects').doc(projectId).collection('lists').get();
         
-        // OPTIMIZATION: Only fetch incomplete tasks with due dates (most relevant for summaries)
+        // FIXED: Simplified query to avoid Firestore index requirements
+        // Get all incomplete tasks and filter in memory instead of using complex where clauses
         const listTasksPromises = listsSnapshot.docs.map(async (listDoc) => {
-          // Only fetch incomplete tasks with due dates, limit to 50 per list
+          // Simple query without complex where clauses to avoid index requirements
           const tasksSnapshot = await listDoc.ref.collection('tasks')
-            .where('completedAt', '==', null)
-            .where('dueDate', '!=', null)
-            .limit(50) // Limit to prevent excessive data transfer
+            .limit(100) // Limit to prevent excessive data transfer
             .get();
           
-          return tasksSnapshot.docs.map(taskDoc => taskDoc.data());
+          // Filter tasks in memory instead of in the query
+          return tasksSnapshot.docs
+            .map(taskDoc => taskDoc.data())
+            .filter(task => 
+              task.completedAt === null && // Only incomplete tasks
+              task.dueDate !== null && task.dueDate !== undefined // Only tasks with due dates
+            );
         });
         
         const allListTasks = await Promise.all(listTasksPromises);

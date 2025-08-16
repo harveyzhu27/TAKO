@@ -1,9 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useClickOutside } from '../hooks/useClickOutside.js';
+import React, { useState, useEffect, ChangeEvent, KeyboardEvent } from 'react';
+import { useClickOutside } from '../hooks/useClickOutside';
 import './HabitTracker.css';
 
+interface Habit {
+  id: number;
+  name: string;
+  entries: Record<string, boolean>;
+}
+
 function HabitTracker() {
-  const [habits, setHabits] = useState(() => {
+  const [habits, setHabits] = useState<Habit[]>(() => {
     const saved = localStorage.getItem('habits');
     return saved ? JSON.parse(saved) : [
       { id: 1, name: 'Exercise', entries: {} },
@@ -11,10 +17,10 @@ function HabitTracker() {
       { id: 3, name: 'Meditate', entries: {} }
     ];
   });
-  const [editingHabitId, setEditingHabitId] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [showAddHabit, setShowAddHabit] = useState(false);
-  const [newHabitName, setNewHabitName] = useState('');
+  const [editingHabitId, setEditingHabitId] = useState<number | null>(null);
+  const [editName, setEditName] = useState<string>('');
+  const [showAddHabit, setShowAddHabit] = useState<boolean>(false);
+  const [newHabitName, setNewHabitName] = useState<string>('');
   
   // Use custom hooks for click outside handling
   const editRef = useClickOutside(() => setEditingHabitId(null), [editingHabitId]);
@@ -29,8 +35,8 @@ function HabitTracker() {
   }, [habits]);
 
   // Generate last 10 days
-  const generateDays = () => {
-    const days = [];
+  const generateDays = (): Date[] => {
+    const days: Date[] = [];
     const today = new Date();
     for (let i = 13; i >= 0; i--) {
       const date = new Date(today);
@@ -42,7 +48,7 @@ function HabitTracker() {
 
   const days = generateDays();
 
-  const toggleHabit = (habitId, date) => {
+  const toggleHabit = (habitId: number, date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
     setHabits(prevHabits => 
       prevHabits.map(habit => {
@@ -60,7 +66,7 @@ function HabitTracker() {
     );
   };
 
-  const startEditHabit = (habit) => {
+  const startEditHabit = (habit: Habit) => {
     setEditingHabitId(habit.id);
     setEditName(habit.name);
   };
@@ -79,13 +85,13 @@ function HabitTracker() {
     }
   };
 
-  const deleteHabit = (habitId) => {
+  const deleteHabit = (habitId: number) => {
     setHabits(prevHabits => prevHabits.filter(habit => habit.id !== habitId));
   };
 
   const addHabit = () => {
     if (newHabitName.trim()) {
-      const newHabit = {
+      const newHabit: Habit = {
         id: Date.now(),
         name: newHabitName.trim(),
         entries: {}
@@ -96,14 +102,14 @@ function HabitTracker() {
     }
   };
 
-  const formatDate = (date) => {
+  const formatDate = (date: Date): string => {
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
       day: 'numeric' 
     });
   };
 
-  const isToday = (date) => {
+  const isToday = (date: Date): boolean => {
     const today = new Date();
     return date.toDateString() === today.toDateString();
   };
@@ -135,8 +141,8 @@ function HabitTracker() {
                   <input
                     type="text"
                     value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    onKeyDown={(e) => {
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+                    onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                       if (e.key === 'Enter') saveEditHabit();
                       if (e.key === 'Escape') setEditingHabitId(null);
                     }}
@@ -190,8 +196,8 @@ function HabitTracker() {
                   type="text"
                   placeholder="New habit..."
                   value={newHabitName}
-                  onChange={(e) => setNewHabitName(e.target.value)}
-                  onKeyDown={(e) => {
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setNewHabitName(e.target.value)}
+                  onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                     if (e.key === 'Enter') addHabit();
                     if (e.key === 'Escape') {
                       setShowAddHabit(false);
@@ -220,4 +226,5 @@ function HabitTracker() {
   );
 }
 
-export default HabitTracker; 
+export default HabitTracker;
+

@@ -58,7 +58,7 @@ export async function updateList(
   order?: number
 ): Promise<List> {
   const token = await getIdToken();
-  const body: any = {};
+  const body: Record<string, string | number> = {};
   if (name !== undefined) body.name = name;
   if (order !== undefined) body.order = order;
   const res = await fetch(`${API_URL}/projects/${projectId}/lists/${listId}`, {

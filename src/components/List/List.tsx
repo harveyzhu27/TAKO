@@ -1,37 +1,58 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useClickOutside } from '../../hooks/useClickOutside.js';
-import { validateTaskName, validateDeadline } from '../../utils/validation.js';
+import React, { useState, useRef, useEffect, useCallback, ChangeEvent, KeyboardEvent, InputEvent } from 'react';
+import { useClickOutside } from '../../hooks/useClickOutside.ts';
+import { validateTaskName, validateDeadline } from '../../utils/validation.ts';
 import './List.css';
-import TaskList from '../TaskList/TaskList';
+import TaskList from '../TaskList/TaskList.tsx';
+import type { List as ListType } from '@shared/models/ListModel';
+import type { Task } from '@shared/models/TaskModel';
+
+interface ListProps {
+    projectId: string;
+    list: ListType;
+    lists: ListType[];
+    addList: (projectId: string, name: string) => void;
+    deleteList: (projectId: string, listId: string) => void;
+    updateList: (projectId: string, listId: string, updates: Partial<ListType>) => void;
+    moveList: (projectId: string, listId: string, direction: 'left' | 'right') => void;
+    addTask: (projectId: string, listId: string, taskName: string, dueDate?: number) => Promise<boolean>;
+    deleteTask: (projectId: string, listId: string, taskId: string) => Promise<void>;
+    updateTask: (projectId: string, listId: string, taskId: string, updates: Partial<Task>) => Promise<void>;
+    reorderTasks: (projectId: string, listId: string, taskIds: string[]) => Promise<void>;
+    addSubtask: (projectId: string, listId: string, taskId: string, subtaskName: string) => Promise<void>;
+    deleteSubtask: (projectId: string, listId: string, taskId: string, subtaskId: string) => Promise<void>;
+    updateSubtask: (projectId: string, listId: string, taskId: string, subtaskId: string, updates: unknown) => Promise<void>;
+    listCount: number;
+    isLeftmost: boolean;
+    isRightmost: boolean;
+    setToastError: (error: string) => void;
+    isDoNowList?: boolean;
+    loadingTasks?: Set<string>;
+}
 
 function List({
     projectId,
     list,
-    lists,
-    addList,
     deleteList,
     updateList,
     moveList,
     addTask,
     deleteTask,
     updateTask,
-    addSubtask,
-    deleteSubtask,
-    updateSubtask,
+    reorderTasks,
     listCount,
     isLeftmost,
     isRightmost,
     setToastError,
     isDoNowList = false,
     loadingTasks = new Set(),
-}) {
-    const [newTaskName, setTaskName] = useState("");
-    const [newTaskDeadline, setTaskDeadline] = useState("");
-    const [showAddTaskOptions, setShowAddTaskOption] = useState(false);
-    const [editingName, setEditingName] = useState(false);
-    const [nameBuffer, setNameBuffer] = useState(list.name);
-    const nameInputRef = useRef(null);
-    const [menuOpen, setMenuOpen] = useState(false);
+}: ListProps) {
+    const [newTaskName, setTaskName] = useState<string>("");
+    const [newTaskDeadline, setTaskDeadline] = useState<string>("");
+    const [showAddTaskOptions, setShowAddTaskOption] = useState<boolean>(false);
+    const [editingName, setEditingName] = useState<boolean>(false);
+    const [nameBuffer, setNameBuffer] = useState<string>(list.name);
+    const nameInputRef = useRef<HTMLInputElement>(null);
+    const [menuOpen, setMenuOpen] = useState<boolean>(false);
     
     // Use custom hooks for click outside handling
     const menuRef = useClickOutside(() => setMenuOpen(false), [menuOpen]);
@@ -48,11 +69,9 @@ function List({
         }
     }, [editingName]);
 
-
-
     function saveName() {
         if (nameBuffer.trim() && nameBuffer.trim() !== list.name) {
-            updateList(projectId, list.id, nameBuffer.trim());
+            updateList(projectId, list.id, { name: nameBuffer.trim() });
         }
         setEditingName(false);
     }
@@ -85,10 +104,20 @@ function List({
         }
     }
 
-    function handleShift(direction) {
+    function handleShift(direction: 'left' | 'right') {
         moveList(projectId, list.id, direction);
         setMenuOpen(false);
     }
+
+    // Handle task reordering
+    const handleTaskReorder = useCallback(async (taskIds: string[]) => {
+        try {
+            await reorderTasks(projectId, list.id, taskIds);
+        } catch (error) {
+            console.error('Failed to reorder tasks:', error);
+            setToastError('Failed to reorder tasks');
+        }
+    }, [projectId, list.id, reorderTasks, setToastError]);
 
     const hasCompleted = (list.tasks || []).some(task => task.completedAt);
 
@@ -99,9 +128,9 @@ function List({
                     <input
                         ref={nameInputRef}
                         value={nameBuffer}
-                        onChange={e => setNameBuffer(e.target.value)}
+                        onChange={(e: ChangeEvent<HTMLInputElement>) => setNameBuffer(e.target.value)}
                         onBlur={saveName}
-                        onKeyDown={e => {
+                        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
                             if (e.key === 'Enter') saveName();
                             if (e.key === 'Escape') cancelEdit();
                         }}
@@ -119,7 +148,7 @@ function List({
                         title={isDoNowList ? "Do Now list cannot be renamed" : "Double-click to rename"}
                         role="button"
                         tabIndex={isDoNowList ? -1 : 0}
-                        onKeyDown={(e) => {
+                        onKeyDown={(e: KeyboardEvent<HTMLSpanElement>) => {
                             if (!isDoNowList && (e.key === 'Enter' || e.key === ' ')) {
                                 e.preventDefault();
                                 setEditingName(true);
@@ -187,11 +216,10 @@ function List({
                     addTask={addTask}
                     deleteTask={deleteTask}
                     updateTask={updateTask}
-                    addSubtask={addSubtask}
-                    deleteSubtask={deleteSubtask}
-                    updateSubtask={updateSubtask}
+
                     setToastError={setToastError}
                     loadingTasks={loadingTasks}
+                    onReorder={handleTaskReorder}
                 />
                 {
                     showAddTaskOptions ? (
@@ -201,13 +229,13 @@ function List({
                                 autoFocus
                                 placeholder='Add task...'
                                 value={newTaskName}
-                                ref={taskInputRef}
-                                onInput={e => {
-                                    e.target.style.height = 'auto';
-                                    e.target.style.height = e.target.scrollHeight + 'px';
+                                onInput={(e: InputEvent<HTMLTextAreaElement>) => {
+                                    const target = e.currentTarget;
+                                    target.style.height = 'auto';
+                                    target.style.height = target.scrollHeight + 'px';
                                 }}
-                                onChange={e => setTaskName(e.target.value)}
-                                onKeyDown={async e => {
+                                onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setTaskName(e.target.value)}
+                                onKeyDown={async (e: KeyboardEvent<HTMLTextAreaElement>) => {
                                     if (e.key === 'Enter' && !e.shiftKey) {
                                         e.preventDefault();
                                         
@@ -251,8 +279,8 @@ function List({
                                 min="0"
                                 placeholder='0'
                                 value={newTaskDeadline}
-                                onChange={e => setTaskDeadline(e.target.value)}
-                                onKeyDown={async e => {
+                                onChange={(e: ChangeEvent<HTMLInputElement>) => setTaskDeadline(e.target.value)}
+                                onKeyDown={async (e: KeyboardEvent<HTMLInputElement>) => {
                                     if (e.key === 'Enter') {
                                         e.preventDefault();
                                         
@@ -305,3 +333,4 @@ function List({
 }
 
 export default List;
+

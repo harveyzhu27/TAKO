@@ -1,24 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { useAuthContext } from "./hooks/useAuth.jsx";
-import SignUp from "./components/SignUp.jsx";
-import SignIn from "./components/SignIn.jsx";
+import { useAuthContext } from "./hooks/useAuth";
+import SignUp from "./components/SignUp";
+import SignIn from "./components/SignIn";
 
-import ProjectTabs from "./components/ProjectTabs/ProjectTabs.jsx";
-import useUserProjects from "./hooks/useUserProjects.jsx";
-import useProjectOperations from "./hooks/useProjectOperations.js";
-import HomePage from "./components/HomePage.jsx";
-import ProjectContent from "./components/ProjectContent.jsx";
-import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import ProjectTabs from "./components/ProjectTabs/ProjectTabs";
+import useUserProjects from "./hooks/useUserProjects";
+import useProjectOperations from "./hooks/useProjectOperations";
+import HomePage from "./components/HomePage";
+import ProjectContent from "./components/ProjectContent";
+import ErrorBoundary from "./components/ErrorBoundary";
 
-import { DragDropProvider } from "./components/DragDrop.jsx";
+import { DragDropProvider } from "./components/DragDrop";
 // import { ProjectSummary } from "../shared/models/ProjectModel.ts"
 
 import "./App.css";
 
 export default function App() {
   const { currentUser, logOut } = useAuthContext();
-  const [toastError, setToastError] = useState(null);
-  const [wasOnHomeScreen, setWasOnHomeScreen] = useState(false);
+  const [toastError, setToastError] = useState<string | null>(null);
+
   
   const {
     projectSummaries,
@@ -31,18 +31,13 @@ export default function App() {
     doNowTasks,
     doNowTaskCount,
     tasksCompletedToday,
-    allTasks,
-
-    // loading & error
-    loading,
-    loadingProjects,
-    error,
 
     // Separate loading states for different sections
     loadingDoNow,
     loadingProjectContent,
     loadingSidebar,
     loadingTasks,
+    loadingProjects,
     loadingInitialData,
 
     // project‐level actions
@@ -61,6 +56,7 @@ export default function App() {
     addTask,
     updateTask,
     deleteTask,
+    reorderTasks,
 
     // subtask‐level actions (commented out - subtasks disabled)
     // addSubtask,
@@ -90,58 +86,52 @@ export default function App() {
       const savedPreference = localStorage.getItem(`tako-home-screen-${currentUser.uid}`);
       console.log('🔍 Loading home screen preference:', savedPreference, 'for user:', currentUser.uid);
       if (savedPreference === 'true') {
-        setWasOnHomeScreen(true);
         originalSetCurrentProject(null);
         console.log('🏠 Set to home screen based on saved preference');
       } else if (savedPreference === 'false') {
-        setWasOnHomeScreen(false);
         console.log('📁 User prefers projects, will set to first project if available');
       }
     }
   }, [currentUser, originalSetCurrentProject]);
 
   // Save home screen preference to localStorage
-  const handleSetCurrentProject = useCallback((projectId) => {
+  const handleSetCurrentProject = useCallback((projectId: string | null) => {
     originalSetCurrentProject(projectId);
     if (currentUser) {
       if (projectId === null) {
         // User is going to home screen
         localStorage.setItem(`tako-home-screen-${currentUser.uid}`, 'true');
-        setWasOnHomeScreen(true);
         console.log('🏠 User going to home screen, saved preference');
       } else {
         // User is going to a project
         localStorage.setItem(`tako-home-screen-${currentUser.uid}`, 'false');
-        setWasOnHomeScreen(false);
         console.log('📁 User going to project:', projectId, 'saved preference');
       }
     }
   }, [currentUser, originalSetCurrentProject]);
 
-  const [showDescription, setShowDescription] = useState(false);
-  const [descBuffer, setDescBuffer] = useState("");
-  const [forceEditProjectId, setForceEditProjectId] = useState(null);
-  const descPopupRef = useRef(null);
+  const [showDescription, setShowDescription] = useState<boolean>(false);
+  const [descBuffer, setDescBuffer] = useState<string>("");
+  const [forceEditProjectId, setForceEditProjectId] = useState<string | null>(null);
+  const descPopupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (fullProject?.description !== undefined) {
       setDescBuffer(fullProject.description);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-
-  }, [fullProject?.id]); // ← only when switching projects
+  }, [fullProject?.id, fullProject?.description]); // ← only when switching projects
 
   // Removed redundant effect that used `projects`
 
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (descPopupRef.current && !descPopupRef.current.contains(e.target)) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (descPopupRef.current && !descPopupRef.current.contains(e.target as Node)) {
         if (currentProject) {
           const oldDesc = (fullProject?.description ?? "").trim();
           const newDesc = descBuffer.trim();
           if (newDesc !== oldDesc) {
             updateProjectOptimistic(currentProject, { description: newDesc }).catch(err => {
-              setToastError(err.message || "Failed to update project description");
+                                    setToastError((err as Error).message || "Failed to update project description");
             });
           }
         }
@@ -237,6 +227,7 @@ export default function App() {
                     addTask={addTask}
                     deleteTask={deleteTask}
                     updateTask={updateTask}
+                    reorderTasks={reorderTasks}
                     setToastError={setToastError}
                     loadingProjectContent={loadingProjectContent}
                     loadingTasks={loadingTasks}
@@ -268,7 +259,7 @@ export default function App() {
                     try {
                       await updateProjectOptimistic(currentProject, { move: "up" });
                     } catch (err) {
-                      setToastError(err.message || "Failed to move project up");
+                      setToastError((err as Error).message || "Failed to move project up");
                     }
                   }}
                   aria-label="Move project up"
@@ -283,7 +274,7 @@ export default function App() {
                     try {
                       await updateProjectOptimistic(currentProject, { move: "down" });
                     } catch (err) {
-                      setToastError(err.message || "Failed to move project down");
+                      setToastError((err as Error).message || "Failed to move project down");
                     }
                   }}
                   aria-label="Move project down"
@@ -312,7 +303,7 @@ export default function App() {
                       if (nextProject) handleSetCurrentProject(nextProject.id);
                       else handleSetCurrentProject(null);
                     } catch (err) {
-                      setToastError(err.message || "Failed to delete project");
+                      setToastError((err as Error).message || "Failed to delete project");
                     }
                   }}
                   aria-label="Delete current project"
@@ -327,7 +318,7 @@ export default function App() {
                 <textarea
                   autoFocus
                   value={descBuffer}
-                  onChange={(e) => setDescBuffer(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescBuffer(e.target.value)}
                   onBlur={async () => {
                     if (
                       currentProject &&
@@ -336,15 +327,15 @@ export default function App() {
                       try {
                         await updateProjectOptimistic(currentProject, { description: descBuffer });
                       } catch (err) {
-                        setToastError(err.message || "Failed to update project description");
+                        setToastError((err as Error).message || "Failed to update project description");
                       }
                     }
                     setShowDescription(false);
                   }}
-                  onKeyDown={(e) => {
+                  onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
                     if (e.key === 'Enter' && e.ctrlKey) {
                       e.preventDefault();
-                      e.target.blur();
+                      e.currentTarget.blur();
                     }
                     if (e.key === 'Escape') {
                       setShowDescription(false);

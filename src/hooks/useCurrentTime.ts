@@ -4,8 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
  * Custom hook for managing current time with efficient updates
  * Only triggers re-renders when the minute changes, not every second
  */
-export const useCurrentTime = (updateInterval = 60000) => {
-  const [currentTime, setCurrentTime] = useState(Date.now());
+export const useCurrentTime = (updateInterval: number = 60000): number => {
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
 
   const updateTime = useCallback(() => {
     setCurrentTime(Date.now());
@@ -28,8 +28,8 @@ export const useCurrentTime = (updateInterval = 60000) => {
  * Hook for getting current time that only updates when needed
  * Useful for components that need current time but don't want frequent re-renders
  */
-export const useCurrentTimeMemo = () => {
-  const [currentTime, setCurrentTime] = useState(Date.now());
+export const useCurrentTimeMemo = (): number => {
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
 
   useEffect(() => {
     const updateTime = () => {
@@ -47,4 +47,4 @@ export const useCurrentTimeMemo = () => {
   }, []);
 
   return currentTime;
-}; 
+};

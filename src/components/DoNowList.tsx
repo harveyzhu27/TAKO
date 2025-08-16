@@ -1,9 +1,18 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { SortableList } from './DragDrop.jsx';
-import { useCurrentTime } from '../hooks/useCurrentTime.js';
-import { useClickOutside } from '../hooks/useClickOutside.js';
-import { formatDeadline, getDeadlineClass } from '../utils/dateUtils.js';
+import React, { useState, useMemo, ChangeEvent, KeyboardEvent } from 'react';
+import { SortableList } from './DragDrop';
+import { useCurrentTime } from '../hooks/useCurrentTime';
+import { useClickOutside } from '../hooks/useClickOutside';
+import { formatDeadline, getDeadlineClass } from '../utils/dateUtils';
 import './DoNowList.css';
+import type { Task } from '@shared/models/TaskModel';
+
+interface DoNowListProps {
+  projectId: string;
+  tasks?: Task[];
+  addTask: (projectId: string, listId: string, taskName: string, dueDate?: number) => Promise<boolean>;
+  deleteTask: (projectId: string, listId: string, taskId: string) => Promise<void>;
+  updateTask: (projectId: string, listId: string, taskId: string, updates: Partial<Task>) => Promise<void>;
+}
 
 function DoNowList({
   projectId,
@@ -11,29 +20,21 @@ function DoNowList({
   addTask,
   deleteTask,
   updateTask,
-  addSubtask,
-  deleteSubtask,
-  updateSubtask,
-}) {
-  const [newTaskName, setNewTaskName] = useState("");
-  const [newTaskDeadline, setNewTaskDeadline] = useState("");
-  const [showAddTaskOptions, setShowAddTaskOption] = useState(false);
-  const [editingTaskId, setEditingTaskId] = useState(null);
-  const [editName, setEditName] = useState('');
-  const [editDeadline, setEditDeadline] = useState('');
-  const [menuOpenId, setMenuOpenId] = useState(null);
+}: DoNowListProps) {
+  const [newTaskName, setNewTaskName] = useState<string>("");
+  const [newTaskDeadline, setNewTaskDeadline] = useState<string>("");
+  const [showAddTaskOptions, setShowAddTaskOption] = useState<boolean>(false);
+
   const currentTime = useCurrentTime(); // Use custom hook for efficient time updates
 
   // Use custom hooks for click outside handling
-  const menuRef = useClickOutside(() => setMenuOpenId(null));
-  const editRef = useClickOutside(() => setEditingTaskId(null), [editingTaskId]);
   const taskInputRef = useClickOutside(() => {
     setShowAddTaskOption(false);
     setNewTaskName("");
     setNewTaskDeadline("");
   }, [showAddTaskOptions]);
 
-  function sortTasks(arr) {
+  function sortTasks(arr: Task[]) {
     return arr
       .map((t, idx) => ({ ...t, _creationIndex: idx }))
       .sort((a, b) => {
@@ -48,7 +49,7 @@ function DoNowList({
   }
 
   // Handle task reordering
-  const handleReorder = (fromIndex, toIndex) => {
+  const handleReorder = (fromIndex: number, toIndex: number) => {
     // TODO: Implement task reordering in backend
     console.log(`Reordering task from index ${fromIndex} to ${toIndex}`);
   };
@@ -56,15 +57,15 @@ function DoNowList({
   // Memoized date calculations using utility functions
   const memoizedDateCalculations = useMemo(() => {
     return {
-      formatDeadline: (daysFromNow) => formatDeadline(daysFromNow, currentTime),
-      deadlineClass: (daysFromNow) => getDeadlineClass(daysFromNow, currentTime)
+      formatDeadline: (daysFromNow: number) => formatDeadline(daysFromNow, currentTime),
+      deadlineClass: (daysFromNow: number) => getDeadlineClass(daysFromNow, currentTime)
     };
   }, [currentTime]);
 
   const sortedTasks = sortTasks(tasks);
 
   // Render function for sortable list
-  const renderTask = (task) => (
+  const renderTask = (task: Task) => (
     <div className="do-now-task">
       <div className="drag-handle">⋮⋮</div>
       <input
@@ -112,8 +113,8 @@ function DoNowList({
             type="text"
             placeholder="Add a do-now task..."
             value={newTaskName}
-            onChange={e => setNewTaskName(e.target.value)}
-            onKeyDown={async e => {
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewTaskName(e.target.value)}
+            onKeyDown={async (e: KeyboardEvent<HTMLInputElement>) => {
               if (e.key === 'Enter') {
                 const trimmedName = newTaskName.trim();
                 if (trimmedName) {
@@ -136,7 +137,7 @@ function DoNowList({
             min="0"
             placeholder="0"
             value={newTaskDeadline}
-            onChange={e => setNewTaskDeadline(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setNewTaskDeadline(e.target.value)}
             className="deadline-input"
           />
         </div>
@@ -152,4 +153,5 @@ function DoNowList({
   );
 }
 
-export default DoNowList; 
+export default DoNowList;
+

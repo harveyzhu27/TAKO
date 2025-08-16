@@ -106,3 +106,53 @@ export async function migrateTaskCounts() {
     throw error;
   }
 }
+
+// Migrate existing tasks to have order fields
+export async function migrateTaskOrders() {
+  try {
+    console.log('🔄 Starting task order migration...');
+    
+    // Get all projects
+    const projectsSnap = await db.collection('projects').get();
+    let totalMigrated = 0;
+    
+    for (const projectDoc of projectsSnap.docs) {
+      const projectId = projectDoc.id;
+      const projectData = projectDoc.data();
+      
+      // Get all lists in this project
+      const listsSnap = await db.collection('projects').doc(projectId).collection('lists').get();
+      
+      for (const listDoc of listsSnap.docs) {
+        const listId = listDoc.id;
+        
+        // Get all tasks in this list, ordered by creation time
+        const tasksSnap = await db.collection('projects').doc(projectId)
+          .collection('lists').doc(listId)
+          .collection('tasks')
+          .orderBy('createdAt', 'asc')
+          .get();
+        
+        if (tasksSnap.empty) continue;
+        
+        // Update each task with an order field
+        const batch = db.batch();
+        tasksSnap.docs.forEach((taskDoc, index) => {
+          const taskRef = taskDoc.ref;
+          batch.update(taskRef, { order: index });
+        });
+        
+        await batch.commit();
+        totalMigrated += tasksSnap.docs.length;
+        
+        console.log(`✅ Migrated ${tasksSnap.docs.length} tasks in project ${projectId}, list ${listId}`);
+      }
+    }
+    
+    console.log(`🎉 Task order migration completed! Total tasks migrated: ${totalMigrated}`);
+    return totalMigrated;
+  } catch (error) {
+    console.error('❌ Error during task order migration:', error);
+    throw error;
+  }
+}

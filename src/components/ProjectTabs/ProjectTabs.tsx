@@ -1,29 +1,50 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { validateProjectName } from '../../utils/validation.js';
+import { validateProjectName } from '../../utils/validation';
 import './ProjectTabs.css';
+
+interface Project {
+  id: string;
+  name: string;
+  order: number;
+}
+
+interface ProjectTabsProps {
+  projects: Project[];
+  currentProject: string | null;
+  addProject: (name: string) => Promise<boolean>;
+  setCurrentProject: (projectId: string | null) => void;
+  deleteProject: (projectId: string) => void;
+  updateProject: (projectId: string, updates: Partial<Project>) => Promise<void>;
+  forceEditProjectId: string | null;
+  setForceEditProjectId: (projectId: string | null) => void;
+  setToastError: (error: string) => void;
+  projectData?: Record<string, unknown>;
+  loadingProjects?: Set<string>;
+  isProjectLoading?: boolean;
+  getProjectError?: (projectId: string) => string | null;
+  clearProjectError?: (projectId: string) => void;
+  loadingSidebar?: boolean;
+  loadingInitialData?: boolean;
+}
 
 function ProjectTabs({
   projects,
   currentProject,
   addProject,
   setCurrentProject,
-  deleteProject,
   updateProject,
   forceEditProjectId,
   setForceEditProjectId,
   setToastError,
   projectData = {},
   loadingProjects = new Set(),
-  isProjectLoading,
-  getProjectError,
-  clearProjectError,
   loadingSidebar = false,
   loadingInitialData = false
-}) {
-  const [newProjectName, setProjectName] = useState("");
-  const [showAddOptions, setShowAddOption] = useState(false);
-  const [editNameBuffer, setEditNameBuffer] = useState("");
-  const inputRef = useRef(null);
+}: ProjectTabsProps) {
+  const [newProjectName, setProjectName] = useState<string>("");
+  const [showAddOptions, setShowAddOption] = useState<boolean>(false);
+  const [editNameBuffer, setEditNameBuffer] = useState<string>("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const sortedProjects = [...projects].sort((a, b) => a.order - b.order);
 
@@ -72,8 +93,8 @@ function ProjectTabs({
                 ref={inputRef}
                 className="edit-project-name-input"
                 value={editNameBuffer}
-                onChange={(e) => setEditNameBuffer(e.target.value)}
-                onKeyDown={async (e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditNameBuffer(e.target.value)}
+                onKeyDown={async (e: React.KeyboardEvent<HTMLInputElement>) => {
                   if (e.key === 'Enter') {
                     // Validate project name
                     const validation = validateProjectName(editNameBuffer);
@@ -86,7 +107,7 @@ function ProjectTabs({
                       setForceEditProjectId(null);
                       setToastError("");
                     } catch (err) {
-                      setToastError(err.message || 'Failed to update project name');
+                      setToastError((err as Error).message || 'Failed to update project name');
                     }
                   } else if (e.key === 'Escape') {
                     setForceEditProjectId(null);
@@ -100,7 +121,7 @@ function ProjectTabs({
                     try {
                       await updateProject(project.id, { name: validation.sanitized });
                     } catch (err) {
-                      setToastError(err.message || 'Failed to update project name');
+                      setToastError((err as Error).message || 'Failed to update project name');
                     }
                   }
                   setForceEditProjectId(null);
@@ -143,8 +164,8 @@ function ProjectTabs({
             className='add-project-box'
             autoFocus
             value={newProjectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            onKeyDown={async (e) => {
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setProjectName(e.target.value)}
+            onKeyDown={async (e: React.KeyboardEvent<HTMLInputElement>) => {
               if (e.key === 'Enter') {
                 // Validate project name
                 const validation = validateProjectName(newProjectName);
@@ -163,7 +184,7 @@ function ProjectTabs({
                   setShowAddOption(false);
                   setToastError("");
                 } catch (err) {
-                  setToastError(err.message || 'Failed to create project');
+                  setToastError((err as Error).message || 'Failed to create project');
                 }
               }
               if (e.key === 'Escape') {
